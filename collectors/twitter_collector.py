@@ -62,10 +62,17 @@ JOURNALIST_ACCOUNTS = [
 
 COMMUNITY_ACCOUNTS = [
     "UnitedWeDream",        # National immigrant rights — breaks ICE ops fast
-    "ABORINGDYSTOPIA",      # Aggregates ICE enforcement stories
     "LORICHALEZE",          # Twin Cities immigrant rights organizer
     "TCAILAction",          # MN immigrant advocacy
-    "ACIKIMY",              # Immigrant advocacy
+    "miracmn",              # Minnesota Immigrant Rights Action Committee - grassroots MN org
+    # ── From GPT Research JSON ──
+    "ConMijente",           # Mijente - Latinx organizing collective, shares ICE abuse news
+    "Abortnf",              # Abort the Supreme Court - intersectional activism, amplifies ICE alerts
+    "defend612",            # Defend612 - Minneapolis rapid-response network (if they have Twitter)
+    "the5051",              # The 50/51 - national protest movement against ICE
+    "SunriseMVMT",          # Sunrise Movement - climate/social justice, supports anti-ICE actions
+    "IndivisibleTeam",      # Indivisible - progressive coalition, organizes against ICE
+    "NickValencia",         # Nick Valencia - journalist covering ICE raids (was CNN, now independent)
 ]
 
 NEWS_ACCOUNTS = [
@@ -92,6 +99,12 @@ MONITORED_ACCOUNTS = (
     + NEWS_ACCOUNTS
     + OFFICIAL_ACCOUNTS
 )
+
+# File to cache account validation results (stale/nonexistent accounts)
+ACCOUNT_CACHE_FILE = Path(".twitter_account_cache.json")
+
+# Max age for account to be considered active (3 months = ~90 days)
+ACCOUNT_STALE_DAYS = 90
 
 # ── Relevance filtering ─────────────────────────────────────────────
 
@@ -137,13 +150,18 @@ MN_KEYWORDS_RE = re.compile(
 )
 
 MN_FOCUSED_ACCOUNTS = {
+    # Local news
     "startribune", "fox9", "mprnews", "kaboremn",
     "bringmethenews", "sahanjournal", "mnreformer",
+    # MN officials
     "govtimwalz", "mplsmayor", "mayorkaohly",
     "agellison", "ilhanmn",
+    # MN journalists
     "maxnesterak", "deenafaywinter", "mwilliamsonmn",
-    "rachstou", "ibrahim_hirsi",
-    "lorichaleze", "tcailaction",
+    "rachstou", "ibrahim_hirsi", "nickvalencia",
+    # MN community orgs
+    "lorichaleze", "tcailaction", "miracmn",
+    "defend612", "sunrisemvmt",
 }
 
 
@@ -298,6 +316,11 @@ class TwitterCollector(BaseCollector):
     - Unauthenticated (no credentials): profile scraping only
 
     The browser stays alive between polling cycles to reuse the session.
+
+    Account validation:
+    - On first run, validates all accounts and caches results
+    - Filters out accounts that don't exist or haven't posted in 3+ months
+    - Re-validates accounts weekly
     """
 
     name = "twitter"
@@ -311,6 +334,8 @@ class TwitterCollector(BaseCollector):
         self._login_failed = False
         self._accounts_per_cycle = 5
         self._search_queries_per_cycle = 2
+        self._active_accounts: list[str] = []  # Validated active accounts
+        self._accounts_validated = False
 
     @property
     def _has_credentials(self) -> bool:
@@ -761,6 +786,192 @@ class TwitterCollector(BaseCollector):
             except Exception:
                 pass
 
+    def _load_account_cache(self) -> dict:
+        """Load cached account validation results."""
+        if ACCOUNT_CACHE_FILE.exists():
+            try:
+                return json.loads(ACCOUNT_CACHE_FILE.read_text())
+            except Exception:
+                pass
+        return {}
+
+    def _save_account_cache(self, cache: dict) -> None:
+        """Save account validation results to disk."""
+        try:
+            ACCOUNT_CACHE_FILE.write_text(json.dumps(cache, indent=2))
+        except Exception as e:
+            logger.debug("[twitter] Failed to save account cache: %s", e)
+
+    async def _check_account_status(self, account: str) -> dict:
+        """Check if an account exists and when it last posted.
+
+        Returns dict with:
+            - exists: bool
+            - last_tweet_date: datetime or None
+            - is_stale: bool (no posts in 3+ months)
+            - error: str or None
+        """
+        if self._context is None:
+            return {"exists": False, "error": "No browser context"}
+
+        result = {
+            "account": account,
+            "exists": True,
+            "last_tweet_date": None,
+            "is_stale": False,
+            "error": None,
+            "checked_at": datetime.now(timezone.utc).isoformat(),
+        }
+
+        api_data: list[dict] = []
+
+        async def on_response(response) -> None:
+            if response.status == 200 and "UserTweets" in response.url:
+                try:
+                    data = await response.json()
+                    api_data.append(data)
+                except Exception:
+                    pass
+
+        page = await self._context.new_page()
+        page.on("response", on_response)
+
+        try:
+            await page.goto(
+                f"https://x.com/{account}",
+                wait_until="domcontentloaded",
+                timeout=25000,
+            )
+            await asyncio.sleep(3)
+
+            # Check for non-existent account
+            page_content = await page.content()
+            if "This account doesn't exist" in page_content or "Account suspended" in page_content:
+                result["exists"] = False
+                result["error"] = "Account does not exist or is suspended"
+                return result
+
+            if "login" in page.url.lower() or "flow" in page.url.lower():
+                result["error"] = "Redirected to login"
+                return result
+
+            # Parse tweets to find the most recent date
+            tweets: list[dict] = []
+            for data in api_data:
+                tweets.extend(_extract_tweets_from_graphql(data))
+
+            if not tweets:
+                # No tweets found - could be private, empty, or parsing issue
+                result["is_stale"] = True
+                result["error"] = "No tweets found"
+                return result
+
+            # Find the most recent tweet date
+            latest_date = None
+            for tweet in tweets:
+                ts = _parse_twitter_date(tweet.get("created_at", ""))
+                if ts and (latest_date is None or ts > latest_date):
+                    latest_date = ts
+
+            if latest_date:
+                result["last_tweet_date"] = latest_date.isoformat()
+                # Check if stale (no posts in 3+ months)
+                days_since = (datetime.now(timezone.utc) - latest_date).days
+                result["is_stale"] = days_since > ACCOUNT_STALE_DAYS
+                result["days_since_last_post"] = days_since
+
+            return result
+
+        except Exception as e:
+            result["error"] = str(e)
+            return result
+        finally:
+            try:
+                await page.close()
+            except Exception:
+                pass
+
+    async def _validate_accounts(self) -> list[str]:
+        """Validate all monitored accounts and return list of active ones.
+
+        Filters out:
+        - Accounts that don't exist
+        - Accounts that haven't posted in 3+ months
+        """
+        cache = self._load_account_cache()
+        now = datetime.now(timezone.utc)
+
+        # Check if cache is fresh (less than 7 days old)
+        cache_age_days = 999
+        if "validated_at" in cache:
+            try:
+                validated_at = datetime.fromisoformat(cache["validated_at"])
+                cache_age_days = (now - validated_at).days
+            except Exception:
+                pass
+
+        # Use cache if fresh
+        if cache_age_days < 7 and "active_accounts" in cache:
+            active = cache["active_accounts"]
+            stale = cache.get("stale_accounts", [])
+            missing = cache.get("missing_accounts", [])
+            logger.info(
+                "[twitter] Using cached account validation (%d active, %d stale, %d missing)",
+                len(active), len(stale), len(missing)
+            )
+            return active
+
+        # Need to re-validate
+        logger.info("[twitter] Validating %d monitored accounts...", len(MONITORED_ACCOUNTS))
+
+        active_accounts = []
+        stale_accounts = []
+        missing_accounts = []
+        account_details = {}
+
+        for i, account in enumerate(MONITORED_ACCOUNTS):
+            logger.debug("[twitter] Checking @%s (%d/%d)...", account, i + 1, len(MONITORED_ACCOUNTS))
+
+            status = await self._check_account_status(account)
+            account_details[account] = status
+
+            if not status["exists"]:
+                missing_accounts.append(account)
+                logger.warning("[twitter] @%s does not exist or is suspended", account)
+            elif status["is_stale"]:
+                stale_accounts.append(account)
+                days = status.get("days_since_last_post", "?")
+                logger.warning("[twitter] @%s is stale (last post %s days ago)", account, days)
+            else:
+                active_accounts.append(account)
+                days = status.get("days_since_last_post", "?")
+                logger.debug("[twitter] @%s is active (last post %s days ago)", account, days)
+
+            # Small delay between checks to avoid rate limiting
+            await asyncio.sleep(1.5)
+
+        # Save results to cache
+        cache = {
+            "validated_at": now.isoformat(),
+            "active_accounts": active_accounts,
+            "stale_accounts": stale_accounts,
+            "missing_accounts": missing_accounts,
+            "account_details": account_details,
+        }
+        self._save_account_cache(cache)
+
+        # Log summary
+        logger.info(
+            "[twitter] Account validation complete: %d active, %d stale, %d missing",
+            len(active_accounts), len(stale_accounts), len(missing_accounts)
+        )
+        if stale_accounts:
+            logger.info("[twitter] Stale accounts (skipped): %s", ", ".join(f"@{a}" for a in stale_accounts))
+        if missing_accounts:
+            logger.info("[twitter] Missing accounts (skipped): %s", ", ".join(f"@{a}" for a in missing_accounts))
+
+        return active_accounts
+
     async def _scrape_account(self, account: str) -> list[dict]:
         """Load an account's profile and intercept GraphQL tweet data."""
         if self._context is None:
@@ -877,6 +1088,14 @@ class TwitterCollector(BaseCollector):
         # Reset per-cycle login failure flag so we retry next cycle
         self._login_failed = False
 
+        # ── Validate accounts on first run ──────────────────────
+        if not self._accounts_validated:
+            self._active_accounts = await self._validate_accounts()
+            self._accounts_validated = True
+            if not self._active_accounts:
+                logger.warning("[twitter] No active accounts found, using all accounts")
+                self._active_accounts = list(MONITORED_ACCOUNTS)
+
         # ── Phase 1: Authenticated search (primary) ──────────────
         if self._has_credentials:
             logged_in = await self._ensure_logged_in()
@@ -908,11 +1127,14 @@ class TwitterCollector(BaseCollector):
                 logger.debug("[twitter] Not logged in, skipping search")
 
         # ── Phase 2: Profile scraping (supplementary) ────────────
-        start = (cycle_idx * self._accounts_per_cycle) % len(MONITORED_ACCOUNTS)
+        # Use only validated active accounts
+        accounts_to_scrape = self._active_accounts if self._active_accounts else list(MONITORED_ACCOUNTS)
+
+        start = (cycle_idx * self._accounts_per_cycle) % len(accounts_to_scrape)
         accounts_this_cycle = []
         for i in range(self._accounts_per_cycle):
-            idx = (start + i) % len(MONITORED_ACCOUNTS)
-            accounts_this_cycle.append(MONITORED_ACCOUNTS[idx])
+            idx = (start + i) % len(accounts_to_scrape)
+            accounts_this_cycle.append(accounts_to_scrape[idx])
 
         logger.debug(
             "[twitter] Cycle %d: scraping profiles %s",

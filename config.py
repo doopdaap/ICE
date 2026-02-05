@@ -55,6 +55,20 @@ class Config:
     bluesky_enabled: bool = True
     bluesky_poll_interval: int = 120
 
+    # StopICE.net
+    stopice_enabled: bool = True
+    stopice_poll_interval: int = 1800  # 30 minutes (data updates nightly)
+
+    # Instagram
+    instagram_enabled: bool = True
+    instagram_poll_interval: int = 300  # 5 minutes (strict rate limits)
+
+    # Geographic filtering - Greater Minneapolis area
+    # Center point: Downtown Minneapolis (44.9778, -93.2650)
+    mpls_center_lat: float = 44.9778
+    mpls_center_lon: float = -93.2650
+    max_distance_km: float = 50.0  # ~30 miles radius
+
     # Report freshness — discard reports older than this
     report_max_age_seconds: int = 10800  # 3 hours
 
@@ -64,6 +78,9 @@ class Config:
     similarity_threshold: float = 0.35
     geo_proximity_km: float = 3.0
     correlation_check_interval: int = 60
+
+    # Cluster expiry - stops sending update notifications after this many hours
+    cluster_expiry_hours: float = 6.0
 
     # Database
     db_path: str = "ice_monitor.db"
@@ -105,12 +122,17 @@ def load_config() -> Config:
         iceout_poll_interval=_get_int("ICEOUT_POLL_INTERVAL", 90),
         bluesky_enabled=_get_bool("BLUESKY_ENABLED", True),
         bluesky_poll_interval=_get_int("BLUESKY_POLL_INTERVAL", 120),
+        stopice_enabled=_get_bool("STOPICE_ENABLED", True),
+        stopice_poll_interval=_get_int("STOPICE_POLL_INTERVAL", 1800),
+        instagram_enabled=_get_bool("INSTAGRAM_ENABLED", True),
+        instagram_poll_interval=_get_int("INSTAGRAM_POLL_INTERVAL", 300),
         report_max_age_seconds=_get_int("REPORT_MAX_AGE_SECONDS", 10800),
         correlation_window_seconds=_get_int("CORRELATION_WINDOW_SECONDS", 10800),
         min_corroboration_sources=_get_int("MIN_CORROBORATION_SOURCES", 2),
         similarity_threshold=_get_float("SIMILARITY_THRESHOLD", 0.35),
         geo_proximity_km=_get_float("GEO_PROXIMITY_KM", 3.0),
         correlation_check_interval=_get_int("CORRELATION_CHECK_INTERVAL", 60),
+        cluster_expiry_hours=_get_float("CLUSTER_EXPIRY_HOURS", 6.0),
         db_path=os.getenv("DB_PATH", "ice_monitor.db"),
         log_level=os.getenv("LOG_LEVEL", "INFO"),
         dry_run=_get_bool("DRY_RUN"),

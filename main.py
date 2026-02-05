@@ -106,6 +106,26 @@ class ICEMonitor:
         else:
             logger.info("Bluesky collector disabled")
 
+        # StopICE.net (XML data feed, no auth needed)
+        if getattr(self.config, "stopice_enabled", True):
+            from collectors.stopice_collector import StopICECollector
+            self.collectors.append(
+                StopICECollector(self.config, self.report_queue)
+            )
+            logger.info("StopICE.net collector enabled (XML feed)")
+        else:
+            logger.info("StopICE.net collector disabled")
+
+        # Instagram (Playwright scraping, no auth needed for public profiles)
+        if getattr(self.config, "instagram_enabled", True):
+            from collectors.instagram_collector import InstagramCollector
+            self.collectors.append(
+                InstagramCollector(self.config, self.report_queue)
+            )
+            logger.info("Instagram collector enabled (Playwright scraping)")
+        else:
+            logger.info("Instagram collector disabled")
+
     def _get_location_extractor(self):
         """Lazy-load the location extractor to avoid slow startup if not needed."""
         if self._location_extractor is None:
@@ -140,17 +160,18 @@ class ICEMonitor:
         if row_id is None:
             return  # Duplicate
 
-        # Iceout reports are pre-validated as ICE-related and have
-        # structured location data — skip keyword filtering for them
-        is_iceout = report.source_type == "iceout"
+        # Trusted community sources (iceout, stopice) are pre-validated as
+        # ICE-related and have structured location data — skip keyword filtering
+        is_trusted_source = report.source_type in ("iceout", "stopice")
 
         # Clean and filter
         cleaned = clean_text(report.text)
-        if is_iceout:
+        if is_trusted_source:
             relevant = True
-            keywords = ["iceout.org report"]
+            keywords = [f"{report.source_type} report"]
         else:
-            relevant = is_relevant(cleaned)
+            # Pass source_type for source-aware filtering
+            relevant = is_relevant(cleaned, source_type=report.source_type)
             keywords = get_all_matched_keywords(cleaned) if relevant else []
 
         # Location extraction
@@ -158,8 +179,8 @@ class ICEMonitor:
         lat = None
         lon = None
 
-        if is_iceout:
-            # Iceout provides exact coordinates in metadata
+        if is_trusted_source:
+            # Trusted sources (Iceout, StopICE) provide coordinates in metadata
             lat = report.raw_metadata.get("latitude")
             lon = report.raw_metadata.get("longitude")
             # Try to match coordinates to a neighborhood via the extractor
@@ -168,14 +189,19 @@ class ICEMonitor:
                 if extractor:
                     from processing.location_extractor import haversine_km
                     best_dist = float("inf")
+                    best_neighborhood = None
                     for entry in extractor._gazetteer:
                         c = entry.get("centroid", {})
                         d = haversine_km(lat, lon, c.get("lat", 0), c.get("lon", 0))
                         if d < best_dist:
                             best_dist = d
-                            neighborhood = entry["name"]
-                    if best_dist > 5.0:
-                        # Too far from any known neighborhood
+                            best_neighborhood = entry["name"]
+
+                    # Only use gazetteer match if within 5km of a known neighborhood
+                    if best_dist <= 5.0:
+                        neighborhood = best_neighborhood
+                    else:
+                        # Use the raw location description from the source
                         neighborhood = report.raw_metadata.get(
                             "location_description", "Minneapolis area"
                         )

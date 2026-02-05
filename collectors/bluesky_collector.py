@@ -37,13 +37,24 @@ SEARCH_QUERIES = [
 
 # ── Accounts to monitor ───────────────────────────────────────────────
 # Bluesky handles (without @)
+# These were found by searching for stale Twitter accounts on Bluesky
 MONITORED_ACCOUNTS = [
-    # News orgs
-    "startribune.bsky.social",
-    "mprnews.bsky.social",
-    # Add more as you find them - Bluesky is still growing
-    # Journalists and activists often have handles like:
-    # "username.bsky.social" or custom domains
+    # ── News orgs ──
+    "startribune.bsky.social",       # Star Tribune - active, major MN newspaper
+    "bringmethenews.bsky.social",    # Bring Me The News - 6242 posts, very active!
+    "sahanjournal.bsky.social",      # Sahan Journal - 908 posts, immigrant community news
+    # Note: mprnews.org exists but has 0 posts
+
+    # ── Journalists ──
+    "maxnesterak.bsky.social",       # Max Nesterak - 723 posts, MN Reformer journalist
+    # Note: mwilliamsonmn.bsky.social and nickvalencia.bsky.social exist but have 0 posts
+
+    # ── Community orgs & activists ──
+    "miracmn.bsky.social",           # MIRAC - 37 posts, MN Immigrant Rights Action Committee
+    "conmijente.bsky.social",        # Mijente - 21 posts, Latinx organizing collective
+    "defend612.bsky.social",         # Defend 612 - 5 posts, Minneapolis rapid-response network
+    "sunrisemvmt.bsky.social",       # Sunrise Movement - 367 posts, climate/social justice
+    # Note: unitedwedream.org exists but has 0 posts
 ]
 
 # ── Relevance filtering ───────────────────────────────────────────────
@@ -78,10 +89,17 @@ MN_KEYWORDS_RE = re.compile(
     re.IGNORECASE,
 )
 
-# MN-focused accounts don't need geo keyword
+# MN-focused accounts don't need geo keyword (only need ICE keyword)
 MN_FOCUSED_ACCOUNTS = {
+    # News
     "startribune.bsky.social",
-    "mprnews.bsky.social",
+    "bringmethenews.bsky.social",
+    "sahanjournal.bsky.social",
+    # Journalists
+    "maxnesterak.bsky.social",
+    # MN community orgs
+    "miracmn.bsky.social",
+    "defend612.bsky.social",
 }
 
 

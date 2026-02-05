@@ -263,17 +263,46 @@ class Database:
         rows = await cursor.fetchall()
         return {row["id"] for row in rows}
 
-    async def get_active_clusters(self) -> list[dict]:
-        """Get all notified clusters that are still within the correlation window."""
+    async def get_active_clusters(self, max_age_hours: float = 6.0) -> list[dict]:
+        """Get notified clusters that are still active (within max_age_hours).
+
+        Clusters older than max_age_hours since their latest_report are
+        considered stale and excluded from update detection.
+        """
+        from datetime import timedelta
+        cutoff = (datetime.now(timezone.utc) - timedelta(hours=max_age_hours)).isoformat()
+
         cursor = await self._db.execute(
             """SELECT id, primary_location, latitude, longitude,
                       confidence_score, source_count, unique_source_types,
                       earliest_report, latest_report
                FROM clusters
-               WHERE notified = 1"""
+               WHERE notified = 1
+                 AND latest_report >= ?""",
+            (cutoff,),
         )
         rows = await cursor.fetchall()
         return [dict(row) for row in rows]
+
+    async def expire_old_clusters(self, max_age_hours: float = 6.0) -> int:
+        """Mark clusters older than max_age_hours as no longer active.
+
+        This stops them from receiving update notifications.
+        Returns count of expired clusters.
+        """
+        from datetime import timedelta
+        cutoff = (datetime.now(timezone.utc) - timedelta(hours=max_age_hours)).isoformat()
+
+        # We don't have an 'active' column, but we can use latest_report
+        # to filter. The get_active_clusters query already handles this.
+        # For explicit tracking, let's just log how many would be expired.
+        cursor = await self._db.execute(
+            """SELECT COUNT(*) as cnt FROM clusters
+               WHERE notified = 1 AND latest_report < ?""",
+            (cutoff,),
+        )
+        row = await cursor.fetchone()
+        return row["cnt"] if row else 0
 
     async def update_cluster(
         self,

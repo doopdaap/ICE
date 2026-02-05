@@ -52,13 +52,14 @@ STATUS_LABELS = {
     1: "Confirmed",
 }
 
-# Minneapolis metro bounding box (generous to include suburbs)
-MPLS_LAT_MIN = 44.75
-MPLS_LAT_MAX = 45.15
-MPLS_LON_MIN = -93.55
-MPLS_LON_MAX = -93.05
+# Greater Minneapolis metro - ~30 mile radius from downtown
+# Center: Downtown Minneapolis (44.9778, -93.2650)
+MPLS_CENTER_LAT = 44.9778
+MPLS_CENTER_LON = -93.2650
+MAX_DISTANCE_KM = 50.0  # ~31 miles
 
 # Text-based fallback filter for location_description
+# Only include actual Minneapolis metro cities (NOT Waite Park, Rochester, etc.)
 MN_LOCATION_KEYWORDS = {
     "minneapolis", "mpls", "st paul", "saint paul",
     "eden prairie", "bloomington", "brooklyn park", "brooklyn center",
@@ -67,13 +68,29 @@ MN_LOCATION_KEYWORDS = {
     "plymouth", "maple grove", "eagan", "burnsville",
     "shakopee", "prior lake", "savage", "lakeville",
     "apple valley", "roseville", "maplewood", "woodbury",
-    "hennepin", "ramsey county", "dakota county",
-    ", mn ", ", mn,", ", minnesota",
+    "coon rapids", "anoka", "champlin", "dayton",
+    "minnetonka", "edina", "hopkins", "chanhassen",
+    "hennepin county", "ramsey county",
 }
 
 
+def _haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    """Calculate distance in km between two lat/lon points."""
+    import math
+    R = 6371.0
+    dlat = math.radians(lat2 - lat1)
+    dlon = math.radians(lon2 - lon1)
+    a = (
+        math.sin(dlat / 2) ** 2
+        + math.cos(math.radians(lat1))
+        * math.cos(math.radians(lat2))
+        * math.sin(dlon / 2) ** 2
+    )
+    return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+
+
 def _is_mpls_area(report: dict) -> bool:
-    """Check if an Iceout report is in the Minneapolis metro area."""
+    """Check if an Iceout report is in the Greater Minneapolis metro area (~30mi radius)."""
     loc_str = report.get("location")
     if loc_str:
         try:
@@ -84,12 +101,21 @@ def _is_mpls_area(report: dict) -> bool:
             coords = loc.get("coordinates", [])
             if len(coords) >= 2:
                 lon, lat = coords[0], coords[1]
-                if (MPLS_LAT_MIN <= lat <= MPLS_LAT_MAX
-                        and MPLS_LON_MIN <= lon <= MPLS_LON_MAX):
+                dist = _haversine_km(lat, lon, MPLS_CENTER_LAT, MPLS_CENTER_LON)
+                if dist <= MAX_DISTANCE_KM:
                     return True
+                else:
+                    # Log rejected reports for debugging
+                    desc = report.get("location_description", "unknown")
+                    logger.debug(
+                        "[iceout] Rejecting report %.1f km from Minneapolis: %s",
+                        dist, desc[:50]
+                    )
+                    return False
         except (json.JSONDecodeError, TypeError, ValueError):
             pass
 
+    # Fallback: check location description text
     desc = (report.get("location_description") or "").lower()
     return any(kw in desc for kw in MN_LOCATION_KEYWORDS)
 

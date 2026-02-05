@@ -11,6 +11,10 @@ from storage.models import CorroboratedIncident, ProcessedReport
 
 logger = logging.getLogger(__name__)
 
+# High-priority sources that can trigger single-source alerts
+# These are trusted community reporting platforms with real-time data
+HIGH_PRIORITY_SOURCES = {"iceout", "stopice"}
+
 
 class Correlator:
     """Groups recent reports into clusters and checks corroboration thresholds.
@@ -64,6 +68,16 @@ class Correlator:
             new_incidents = await self._find_new_clusters(still_unclustered)
             incidents.extend(new_incidents)
 
+        # ── Phase 3: Single-source alerts from high-priority sources ──
+        # High-priority sources (Iceout, StopICE) can trigger alerts without
+        # corroboration since they are trusted community reporting platforms
+        still_unclustered = [r for r in still_unclustered if r.cluster_id is None]
+        if still_unclustered:
+            high_priority_incidents = await self._check_high_priority_singles(
+                still_unclustered
+            )
+            incidents.extend(high_priority_incidents)
+
         return incidents
 
     async def _check_cluster_updates(
@@ -73,7 +87,9 @@ class Correlator:
         all_reports: list[ProcessedReport],
     ) -> list[CorroboratedIncident]:
         """Check if any unclustered reports match existing notified clusters."""
-        active_clusters = await self.db.get_active_clusters()
+        # Only get clusters that haven't expired (within cluster_expiry_hours)
+        expiry_hours = getattr(self.config, "cluster_expiry_hours", 6.0)
+        active_clusters = await self.db.get_active_clusters(max_age_hours=expiry_hours)
         if not active_clusters:
             return []
 
@@ -206,6 +222,77 @@ class Correlator:
             best_score = max(best_score, combined)
 
         return best_score
+
+    async def _check_high_priority_singles(
+        self, reports: list[ProcessedReport]
+    ) -> list[CorroboratedIncident]:
+        """Create single-source alerts for high-priority trusted sources.
+
+        Sources like Iceout.org and StopICE.net are community-driven platforms
+        with real-time reports that have already been vetted by their systems.
+        These can trigger alerts without requiring corroboration from other sources.
+        """
+        incidents = []
+
+        for report in reports:
+            # Only high-priority sources qualify
+            if report.source_type not in HIGH_PRIORITY_SOURCES:
+                continue
+
+            # Skip if already clustered
+            if report.cluster_id is not None:
+                continue
+
+            # Build single-report incident
+            source_types = {report.source_type}
+
+            # Use slightly lower confidence for single-source
+            confidence = 0.65  # Trusted but single source
+
+            # Location from the report
+            primary_location = report.primary_neighborhood or "Minneapolis area"
+
+            # Create cluster for this single report
+            report_ids = [report.id] if report.id is not None else []
+            cluster_id = await self.db.create_cluster(
+                primary_location=primary_location,
+                latitude=report.latitude,
+                longitude=report.longitude,
+                confidence_score=confidence,
+                source_count=1,
+                unique_source_types=list(source_types),
+                earliest_report=report.timestamp,
+                latest_report=report.timestamp,
+            )
+
+            if report_ids:
+                await self.db.assign_reports_to_cluster(report_ids, cluster_id)
+                report.cluster_id = cluster_id
+
+            incident = CorroboratedIncident(
+                cluster_id=cluster_id,
+                reports=[report],
+                primary_location=primary_location,
+                latitude=report.latitude,
+                longitude=report.longitude,
+                confidence_score=confidence,
+                source_count=1,
+                unique_source_types=source_types,
+                earliest_report=report.timestamp,
+                latest_report=report.timestamp,
+                notification_type="new",
+                new_reports=[report],
+            )
+            incidents.append(incident)
+
+            logger.info(
+                "High-priority single-source alert from %s: %s (confidence %.2f)",
+                report.source_type,
+                primary_location,
+                confidence,
+            )
+
+        return incidents
 
     async def _find_new_clusters(
         self, reports: list[ProcessedReport]

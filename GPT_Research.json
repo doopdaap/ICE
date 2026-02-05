@@ -1,0 +1,121 @@
+{
+  "social_media_sources": [
+    {
+      "platform": "Instagram",
+      "handle": "@defend612",
+      "description": "Minneapolis rapid-response network coordinating ICE watch patrols. Posts frequent alerts, training events, and calls to action about ICE activity:contentReference[oaicite:0]{index=0}. Their Instagram serves as a public hub for local anti-ICE efforts:contentReference[oaicite:1]{index=1}.",
+      "location_focus": "Minneapolis"
+    },
+    {
+      "platform": "Instagram",
+      "handle": "@the5051",
+      "description": "National protest movement organizing mass demonstrations against ICE. Shares Minneapolis-related alerts and protest info via Instagram:contentReference[oaicite:2]{index=2}. Hosts monthly \"5th of the month\" actions and amplifies local reports across the U.S.",
+      "location_focus": "National (Minneapolis-inclusive)"
+    },
+    {
+      "platform": "Instagram",
+      "handle": "@sunrisetwincities",
+      "description": "Twin Cities chapter of the Sunrise Movement. Primarily a climate justice group, but actively supports anti-ICE protests. Uses Instagram to promote solidarity events and rapid-response rallies against ICE in Minneapolis:contentReference[oaicite:3]{index=3}.",
+      "location_focus": "Minneapolis/St. Paul"
+    },
+    {
+      "platform": "Instagram",
+      "handle": "@indivisible_twincities",
+      "description": "Progressive volunteer coalition in Minneapolis. Frequently posts on social media about resisting ICE enforcement, organizing general strikes and marches:contentReference[oaicite:4]{index=4}. Major local mobilizer sharing daily updates and protest information:contentReference[oaicite:5]{index=5}.",
+      "location_focus": "Minneapolis/St. Paul"
+    },
+    {
+      "platform": "Twitter (X)",
+      "handle": "@miracmn",
+      "description": "Minnesota Immigrant Rights Action Committee – grassroots immigrant-rights org. Posts rally announcements, \"Know Your Rights\" info, and denunciations of ICE operations (e.g. statements against ICE presence in Minneapolis):contentReference[oaicite:6]{index=6}. Focuses on Minneapolis and Minnesota issues.",
+      "location_focus": "Minneapolis/Minnesota"
+    },
+    {
+      "platform": "Substack",
+      "handle": "NickValenciaNews",
+      "description": "Nick Valencia – independent journalist (former CNN). Provides on-the-ground live reports from Minneapolis about ICE raids and protests. Posts multiple real-time video and text updates daily via Substack and social channels:contentReference[oaicite:7]{index=7}. National journalist, currently focused on Minneapolis coverage.",
+      "location_focus": "Minneapolis (national reach)"
+    },
+    {
+      "platform": "Reddit",
+      "handle": "r/Minneapolis (community threads)",
+      "description": "Local Reddit community where users post real-time ICE sightings, agent locations, and tips. Moderators have created megathreads for sharing alerts (e.g. ICE vehicles spotted at specific addresses):contentReference[oaicite:8]{index=8}. Community members also point each other to tools like Iceout.org for broader tracking:contentReference[oaicite:9]{index=9}.",
+      "location_focus": "Minneapolis"
+    },
+    {
+      "platform": "Bluesky",
+      "handle": "startribune.bsky.social",
+      "description": "Official Bluesky feed of the Star Tribune (Minneapolis newspaper). Shares news stories, including coverage of ICE operations and local immigration enforcement updates. Less rapid than activist feeds but provides verified reporting on Minneapolis events.",
+      "location_focus": "Minneapolis"
+    },
+    {
+      "platform": "Bluesky",
+      "handle": "mprnews.bsky.social",
+      "description": "Minnesota Public Radio News on Bluesky, posting regional news. Highlights developments in the ongoing ICE crackdown (e.g. legal challenges, community responses) alongside general Minnesota news. Location focus is statewide with Twin Cities coverage.",
+      "location_focus": "Minnesota (Minneapolis-focused updates)"
+    },
+    {
+      "platform": "Twitter (X)",
+      "handle": "@UNITEDWEDREAM",
+      "description": "United We Dream – national immigrant youth network. Tweets frequent calls to action and info on ICE operations nationwide. Has amplified Minneapolis incidents (e.g. condemning the ICE shooting of a Minneapolis resident and urging Congress to defund ICE):contentReference[oaicite:10]{index=10}:contentReference[oaicite:11]{index=11}. Focus: National, with local solidarity posts.",
+      "location_focus": "National (Minneapolis-related updates)"
+    },
+    {
+      "platform": "Twitter (X)",
+      "handle": "@ConMijente",
+      "description": "Mijente – Latinx organizing collective. Posts about abolishing ICE and tech surveillance of immigrants:contentReference[oaicite:12]{index=12}, and shares news of ICE abuses (including Minneapolis cases) to mobilize supporters. Focus is national, but they circulate Minneapolis enforcement videos and solidarity messages.",
+      "location_focus": "National"
+    }
+  ],
+  "platforms": [
+    {
+      "name": "People Over Papers (Iceout.org)",
+      "url": "https://iceout.org",
+      "description": "Community-driven ICE activity map. Users submit reports of ICE sightings (with locations, timestamps, photos/videos) categorized as Critical, Active, Observed, or Other:contentReference[oaicite:13]{index=13}. All entries are crowd-sourced and initially unverified:contentReference[oaicite:14]{index=14}. The platform lets anyone see recent reports (and their status as unconfirmed or confirmed) to warn communities.",
+      "includes_minneapolis_data": true,
+      "reporting_method": "User submissions via web/app, optionally with media. Reports are displayed in real time; moderators mark confirmations or updates, but data largely relies on community evidence and upvotes."
+    },
+    {
+      "name": "ICE Activity Tracker (IceInMyArea.org)",
+      "url": "https://iceinmyarea.org",
+      "description": "Anonymous community-driven site to report and track ICE enforcement in real time. The platform has thousands of users across the U.S. reporting sightings every day, and each report is now reviewed by a person for accuracy:contentReference[oaicite:15]{index=15}. Users can submit anonymous alerts about ICE vehicles, raids, or detentions and see a feed/map of recent reports. Emphasizes privacy and timely community alerts.",
+      "includes_minneapolis_data": true,
+      "reporting_method": "User reports via online form (address, details, optional photo). Dedicated verifiers review and tag reports as verified. Minneapolis-area posts are filtered and shown if submitted."
+    },
+    {
+      "name": "Stop ICE Raids Alert Network (StopICE.net)",
+      "url": "https://stopice.net",
+      "description": "Nationwide SMS & web-based ICE alert system with interactive map. Subscribers get text alerts when ICE activity is reported within a chosen radius:contentReference[oaicite:16]{index=16}. The live map displays alerts labeled by status: Confirmed, Sighting, Unconfirmed, etc.:contentReference[oaicite:17]{index=17}. Community members can send alerts by texting or through the site; each report has a comment thread for crowd verification. Active across the U.S., including frequent use in Minneapolis.",
+      "includes_minneapolis_data": true,
+      "reporting_method": "Users text a dedicated number or use the website to report ICE sightings (with location). Reports are geotagged and appear on the map as Unconfirmed until vetted by community moderators or multiple witnesses:contentReference[oaicite:18]{index=18}. The system uses anti-spam measures and manual review, given past hacking attempts."
+    },
+    {
+      "name": "ICEBlock Mobile App",
+      "url": "https://iceblock.app",
+      "description": "A Waze-like mobile app for instantly reporting ICE sightings within a 5-mile radius. Users can anonymously mark ICE presence with two taps, and alerts automatically expire after 4 hours to ensure timeliness:contentReference[oaicite:19]{index=19}. ICEBlock collected no personal data and protected user privacy. It gained popularity in 2025, but Apple removed it from the App Store under Trump administration pressure in Oct 2025:contentReference[oaicite:20]{index=20} (existing installations still function).",
+      "includes_minneapolis_data": true,
+      "reporting_method": "Mobile app (iOS) with GPS-based one-tap reports. No login required; no user data stored. Alerts broadcast to nearby users in real time and vanish after a few hours. No formal verification layer beyond multiple user reports; relies on immediate, local crowd updates."
+    },
+    {
+      "name": "SignalSafe App",
+      "url": "https://signalsafe.app",
+      "description": "Real-time community reporting app (launched 2025) that maps ICE agent sightings via user-dropped pins:contentReference[oaicite:21]{index=21}:contentReference[oaicite:22]{index=22}. Developed by anonymous activists, it provides location-based alerts with filters (by area, type of activity, time) and bilingual support:contentReference[oaicite:23]{index=23}. SignalSafe grew popular during Trump’s second term and uses specialized moderators to verify each citizen report before alerting others:contentReference[oaicite:24]{index=24}. Strong privacy protections (no identities, secure protocols) are built in.",
+      "includes_minneapolis_data": true,
+      "reporting_method": "Users submit sightings through the mobile app, including location and optional notes/media. Reports are verified in the app by a team of moderators for accuracy:contentReference[oaicite:25]{index=25}. Once verified, alerts are sent to users in the vicinity. The app is available nationwide, including active usage in Minneapolis."
+    },
+    {
+      "name": "Coquí App",
+      "url": "https://getcoqui.com",
+      "description": "A free, anonymous smartphone app (launched mid-2025) built \"by and for immigrant communities\" to share real-time ICE enforcement alerts:contentReference[oaicite:26]{index=26}. Coquí features encrypted communications, masks user locations, and has anti-troll measures:contentReference[oaicite:27]{index=27}. Users can drop map pins to warn others of ICE nearby, join local alert groups, and view designated safe spots (businesses or locations vetted as refuge):contentReference[oaicite:28]{index=28}. Highly used in the current Minneapolis surge for its privacy and community focus.",
+      "includes_minneapolis_data": true,
+      "reporting_method": "Mobile app (iOS/Android). Users report ICE sightings by dropping a pin and description; no personal data is collected:contentReference[oaicite:29]{index=29}. The app’s backend encrypts data and prevents fake reports (troll/spam mitigation). Alerts are broadcast to users in the area in real time. Verification relies on user ratings and built-in anti-trolling protocols rather than manual moderation."
+    },
+    {
+      "name": "DeportationTracker Live Map",
+      "url": "https://deportationtracker.live",
+      "description": "Online live map of ICE raids and detentions reported across the U.S. It shows recent ICE raids \"near your location\" with pins and details:contentReference[oaicite:30]{index=30}. Users can submit new raid reports via a web form (location, date, time, details). All submissions are reviewed by the site’s team before going live:contentReference[oaicite:31]{index=31}, but the platform issues a disclaimer that reports are user-generated and not guaranteed accurate:contentReference[oaicite:32]{index=32}. Minneapolis incidents appear on the map if reported.",
+      "includes_minneapolis_data": true,
+      "reporting_method": "Web portal. Community members fill out a 'Report ICE Raid' form; data (including IP and timestamp) is collected to filter spam:contentReference[oaicite:33]{index=33}. Site admins vet each report for plausibility before marking it on the map. Verified raid reports display location and any patterns (e.g. repeated tactics) for public awareness."
+    }
+  ]
+}

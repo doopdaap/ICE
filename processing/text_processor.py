@@ -187,6 +187,79 @@ NOISE_CONTEXTS = re.compile(
     re.IGNORECASE,
 )
 
+# ── News article rejection ───────────────────────────────────────────
+# These patterns indicate a NEWS ARTICLE about past events, court cases,
+# or policy discussions - NOT real-time ICE activity reports.
+# We want to filter these out to focus on actionable, real-time alerts.
+NEWS_ARTICLE_PATTERNS = re.compile(
+    r"\b(?:"
+    # Court/legal proceedings
+    r"arrested for|charged with|pleaded guilty|found guilty|sentenced to|"
+    r"indicted|arraigned|convicted of|faces charges|facing charges|"
+    r"appeared in court|court documents|federal complaint|"
+    r"justice department|department of justice|doj |"
+    r"prosecutor|prosecution|defendant|"
+    r"judge.{0,5}s? order|court order|ruling|lawsuit|"
+    r"filed suit|legal challenge|appeals court|federal court|"
+    r"supreme court|district court|"
+    # Threats/crimes AGAINST officers (not ICE enforcement activity)
+    r"threatening .{0,30}officer|threat.{0,20}against|"
+    r"assault.{0,20}officer|attack.{0,20}officer|"
+    r"allegedly threaten|accused of threaten|"
+    # Past tense deportation news (not real-time)
+    r"was deported|were deported|been deported|got deported|"
+    r"sent .{0,20}to mexico|sent .{0,20}to .{0,20}country|"
+    r"was sent back|were sent back|"
+    r"despite .{0,30}order|defied .{0,20}order|"
+    r"violated .{0,20}order|"
+    # Policy/political news (not real-time)
+    r"executive order|policy change|legislation|lawmakers|"
+    r"congress |senate |house bill|proposed bill|"
+    r"administration.{0,20}announce|press conference|"
+    r"white house|trump administration|biden administration|"
+    # Statistics and reports (retrospective)
+    r"according to .{0,30}report|study finds|data shows|"
+    r"fiscal year|annual report|statistics show|"
+    # News article language
+    r"the government says|officials said|sources say|"
+    r"in a statement|released a statement|"
+    r"breaking:|update:|developing:|"
+    r"earlier today|yesterday|last week|last month|"
+    # Opinion/analysis
+    r"opinion:|editorial:|analysis:|commentary:"
+    r")\b",
+    re.IGNORECASE,
+)
+
+# ── Source-based trust levels ─────────────────────────────────────────
+# Different sources get different filtering treatment:
+# - TRUSTED: Community reporting platforms (Iceout, StopICE) - skip news filtering
+# - COMMUNITY: Activist Twitter/social accounts - lighter filtering
+# - NEWS: RSS/news sources - strict filtering, require real-time signals
+TRUSTED_SOURCES = {"iceout", "stopice"}
+COMMUNITY_SOURCES = {"twitter", "bluesky", "reddit"}
+NEWS_SOURCES = {"rss"}
+
+# ── Real-time activity signals ───────────────────────────────────────
+# These phrases strongly indicate CURRENT/ONGOING ICE activity.
+# If present, we should NOT filter out the report even if it has some news-like words.
+# NOTE: Be careful - don't include generic news words like "alert" or "breaking"
+REALTIME_SIGNALS = re.compile(
+    r"\b(?:"
+    r"right now|happening now|currently at|"
+    r"just saw|just spotted|spotted at|seen at|"
+    r"ice (?:is |are )?here|they.{0,10}here|"
+    r"at .{0,30}right now|"
+    r"heads up|"
+    r"avoid .{0,20}area|stay away from|"
+    r"confirmed sighting|unconfirmed sighting|"
+    r"ice sighting|ice spotted|"
+    r"iceout\.org|community report|"
+    r"rapid response|know your rights"
+    r")\b",
+    re.IGNORECASE,
+)
+
 # Pre-compile a URL stripping pattern
 _URL_RE = re.compile(r"https?://\S+")
 _HTML_TAG_RE = re.compile(r"<[^>]+>")
@@ -231,11 +304,22 @@ def find_matching_keywords(text: str) -> tuple[list[str], list[str]]:
     return ice_matches, geo_matches
 
 
-def is_relevant(text: str) -> bool:
-    """Check if text matches at least one ICE keyword AND one geo keyword.
+def is_relevant(text: str, source_type: str = "unknown") -> bool:
+    """Check if text is about real-time ICE enforcement activity.
 
-    Also rejects false positives where "ice" only appears in a noise
-    context like "ice cream" or "ice fishing".
+    Filters applied:
+    1. Must match at least one ICE keyword AND one geo keyword
+    2. Rejects noise contexts ("ice cream", "ice fishing", etc.)
+    3. For NEWS sources: Requires explicit real-time signals to pass
+    4. For COMMUNITY sources: Rejects obvious news articles
+    5. For TRUSTED sources: Minimal filtering (just keywords + noise)
+
+    The goal is to surface ACTIONABLE reports about ICE activity
+    happening NOW, not news coverage of past events.
+
+    Args:
+        text: The text to analyze
+        source_type: Source identifier ('rss', 'twitter', 'iceout', etc.)
     """
     text_lower = text.lower()
     ice_matches = _match_ice_keywords(text_lower)
@@ -246,10 +330,44 @@ def is_relevant(text: str) -> bool:
 
     # If the only ICE match is the bare word "ice", check for noise contexts
     if ice_matches == ["ice"] or all(m == "ice" for m in ice_matches):
-        # If there's a noise context match, reject unless there's also
-        # a stronger signal (like "ice agents" or "detained")
         if NOISE_CONTEXTS.search(text_lower):
             return False
+
+    # Source-based filtering strategy
+    has_realtime_signal = bool(REALTIME_SIGNALS.search(text_lower))
+    has_news_pattern = bool(NEWS_ARTICLE_PATTERNS.search(text_lower))
+
+    # TRUSTED sources (Iceout, StopICE): These are curated community platforms
+    # that only have real ICE reports. Minimal filtering needed.
+    if source_type in TRUSTED_SOURCES:
+        return True
+
+    # NEWS sources (RSS): These are news websites that frequently report
+    # on court cases, policy, past events. REQUIRE real-time signals.
+    if source_type in NEWS_SOURCES:
+        if has_realtime_signal:
+            return True
+        # For news sources, reject even if no explicit news patterns found
+        # The whitelist approach: must have real-time language to pass
+        logger.debug(
+            "Rejecting news source (no real-time signal): [%s] %s...",
+            source_type,
+            text[:80].replace('\n', ' ')
+        )
+        return False
+
+    # COMMUNITY sources (Twitter, Bluesky, Reddit): Mixed content.
+    # Allow through unless it has clear news article patterns.
+    if has_realtime_signal:
+        return True
+
+    if has_news_pattern:
+        logger.debug(
+            "Rejecting news article: [%s] %s...",
+            source_type,
+            text[:80].replace('\n', ' ')
+        )
+        return False
 
     return True
 
