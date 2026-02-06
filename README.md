@@ -166,9 +166,9 @@ Each collector polls its source at configured intervals:
 - RSS: Every 5 minutes
 
 ### Processing Phase
-1. **Freshness Filter**: Discards reports older than 3 hours
+1. **Freshness Filter**: Discards reports older than 3 hours (6 hours for trusted sources like Iceout)
 2. **Relevance Filter**: Checks for ICE keywords + Minneapolis geographic references
-3. **News Filter**: Rejects news articles without real-time signals (RSS sources require explicit real-time language)
+3. **News Filter**: Rejects news articles about court cases, past events, or policy discussions
 4. **Location Extraction**: Uses spaCy NER + custom gazetteer to identify neighborhoods
 
 ### Correlation Phase
@@ -224,6 +224,13 @@ ice-monitor/
 
 ### Twitter/X
 Automatically validates and filters accounts. Only scrapes accounts that have posted within 90 days. Most activist accounts have migrated to Bluesky.
+
+## Reliability Features
+
+- **Auto-Recovery**: Browser collectors (Iceout, Twitter, Instagram) automatically restart if they crash or timeout
+- **Timeout Protection**: All collection cycles have a 2-minute timeout to prevent indefinite hangs
+- **Backoff Protection**: Collectors reset after 10 consecutive failures to prevent death spirals
+- **Duplicate Prevention**: Database tracks seen reports to avoid re-notifying on restart
 
 ## Disclaimer
 
