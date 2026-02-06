@@ -14,6 +14,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import logging
+import os
 import signal
 import sys
 from datetime import datetime, timedelta, timezone
@@ -31,6 +32,9 @@ logger = logging.getLogger("ice_monitor")
 
 
 def setup_logging(level: str) -> None:
+    # Ensure logs directory exists
+    os.makedirs("logs", exist_ok=True)
+
     logging.basicConfig(
         level=getattr(logging, level.upper(), logging.INFO),
         format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",

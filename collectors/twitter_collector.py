@@ -1108,7 +1108,7 @@ class TwitterCollector(BaseCollector):
                     idx = (start_q + i) % len(SEARCH_QUERIES)
                     queries_this_cycle.append(SEARCH_QUERIES[idx])
 
-                logger.debug(
+                logger.info(
                     "[twitter] Cycle %d: running %d search queries",
                     cycle_idx, len(queries_this_cycle),
                 )
@@ -1122,7 +1122,7 @@ class TwitterCollector(BaseCollector):
                         reports.extend(search_reports)
                         await asyncio.sleep(2)
                     except Exception:
-                        logger.debug("[twitter] Search failed for query: %s", query[:40])
+                        logger.warning("[twitter] Search failed for query: %s", query[:40])
             else:
                 logger.debug("[twitter] Not logged in, skipping search")
 
@@ -1136,7 +1136,7 @@ class TwitterCollector(BaseCollector):
             idx = (start + i) % len(accounts_to_scrape)
             accounts_this_cycle.append(accounts_to_scrape[idx])
 
-        logger.debug(
+        logger.info(
             "[twitter] Cycle %d: scraping profiles %s",
             cycle_idx,
             [f"@{a}" for a in accounts_this_cycle],
@@ -1151,7 +1151,7 @@ class TwitterCollector(BaseCollector):
                 reports.extend(profile_reports)
                 await asyncio.sleep(2)
             except Exception:
-                logger.debug("[twitter] Failed to scrape @%s", account)
+                logger.warning("[twitter] Failed to scrape @%s", account)
 
         if reports:
             logger.info(

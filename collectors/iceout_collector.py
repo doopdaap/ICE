@@ -241,6 +241,7 @@ class IceoutCollector(BaseCollector):
 
         # If already authenticated, fetch the API directly via the page context
         if self._authenticated:
+            logger.info("[iceout] Using cached auth, fetching API directly")
             try:
                 # Use page.evaluate to make a fetch from the authenticated context
                 js_code = f"""
@@ -256,6 +257,7 @@ class IceoutCollector(BaseCollector):
                 """
                 result = await self._page.evaluate(js_code)
                 if result is not None:
+                    logger.info("[iceout] Direct API fetch successful")
                     return bytes(result)
 
                 # Fetch failed (maybe session expired), fall through to full nav
@@ -266,12 +268,14 @@ class IceoutCollector(BaseCollector):
                 self._authenticated = False
 
         # Full navigation — let the site's JS handle auth
+        logger.info("[iceout] Navigating to %s for auth", ICEOUT_SITE_URL)
         try:
             await self._page.goto(
                 ICEOUT_SITE_URL,
                 wait_until="networkidle",
                 timeout=60000,
             )
+            logger.info("[iceout] Navigation complete, checking for intercepted data")
 
             # Wait a bit for any delayed API calls
             await asyncio.sleep(3)
@@ -347,7 +351,10 @@ class IceoutCollector(BaseCollector):
         return self.config.iceout_poll_interval
 
     async def collect(self) -> list[RawReport]:
+        logger.info("[iceout] Starting collection cycle")
+
         if not await self._ensure_browser():
+            logger.warning("[iceout] Browser not available, skipping cycle")
             return []
 
         now = datetime.now(timezone.utc)
@@ -355,7 +362,9 @@ class IceoutCollector(BaseCollector):
         try:
             raw_bytes = await self._navigate_and_fetch()
             if raw_bytes is None:
+                logger.warning("[iceout] No data received from API")
                 return []
+            logger.info("[iceout] Received %d bytes from API", len(raw_bytes))
 
             data = msgpack.unpackb(raw_bytes, raw=False)
 
@@ -461,6 +470,8 @@ class IceoutCollector(BaseCollector):
                 len(reports),
                 len(data),
             )
+        else:
+            logger.info("[iceout] No Minneapolis-area reports in %d total items", len(data))
 
         return reports
 

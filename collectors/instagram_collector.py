@@ -462,7 +462,7 @@ class InstagramCollector(BaseCollector):
             idx = (start + i) % len(MONITORED_ACCOUNTS)
             accounts_this_cycle.append(MONITORED_ACCOUNTS[idx])
 
-        logger.debug(
+        logger.info(
             "[instagram] Cycle %d: checking @%s",
             self._cycle_count,
             ", @".join(accounts_this_cycle)
@@ -517,7 +517,7 @@ class InstagramCollector(BaseCollector):
                 await asyncio.sleep(3)
 
             except Exception as e:
-                logger.debug("[instagram] Error collecting from @%s: %s", username, e)
+                logger.warning("[instagram] Error collecting from @%s: %s", username, e)
 
         if reports:
             logger.info("[instagram] Found %d relevant posts", len(reports))

@@ -25,7 +25,7 @@ This tool helps community members stay informed about ICE enforcement activity i
 | Source | Type | Description |
 |--------|------|-------------|
 | **Iceout.org** | Community Platform | Crowd-sourced ICE sighting reports with verification |
-| **StopICE.net** | Community Platform | SMS/web-based alert network with live map |
+| **StopICE.net** | Community Platform | SMS/web-based alert network (API may be unreliable) |
 | **Bluesky** | Social Media | 8 monitored accounts + keyword searches |
 | **Instagram** | Social Media | 4 monitored community organization accounts |
 | **Twitter/X** | Social Media | Auto-validated active accounts only |
