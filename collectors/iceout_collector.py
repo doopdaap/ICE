@@ -389,6 +389,19 @@ class IceoutCollector(BaseCollector):
     async def collect(self) -> list[RawReport]:
         logger.info("[iceout] Starting collection cycle")
 
+        # Wrap entire collection in a timeout to prevent indefinite hangs
+        try:
+            return await asyncio.wait_for(
+                self._do_collect(),
+                timeout=120.0  # 2 minute max for entire collection cycle
+            )
+        except asyncio.TimeoutError:
+            logger.error("[iceout] Collection cycle timed out after 120s, resetting browser")
+            await self._close_browser()
+            return []
+
+    async def _do_collect(self) -> list[RawReport]:
+        """Internal collection logic with timeout wrapper."""
         if not await self._ensure_browser():
             logger.warning("[iceout] Browser not available, skipping cycle")
             return []
