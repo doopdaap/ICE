@@ -163,6 +163,7 @@ class IceoutCollector(BaseCollector):
         self._page = None
         self._authenticated = False
         self._intercepted_data: list[bytes] = []
+        self._polls_since_full_auth = 0  # Track polls since last full navigation
 
     async def _ensure_browser(self) -> bool:
         """Launch Playwright browser if not already running."""
@@ -244,6 +245,13 @@ class IceoutCollector(BaseCollector):
         since = now - timedelta(hours=3)
         since_str = since.strftime("%Y-%m-%dT%H:%M:%S.000Z")
 
+        # Force full re-authentication every 5 polls to avoid stale sessions
+        self._polls_since_full_auth += 1
+        if self._polls_since_full_auth >= 5:
+            logger.info("[iceout] Forcing full re-authentication (5 polls reached)")
+            self._authenticated = False
+            self._polls_since_full_auth = 0
+
         # If already authenticated, fetch the API directly via the page context
         if self._authenticated:
             logger.info("[iceout] Using cached auth, fetching API directly")
@@ -262,11 +270,13 @@ class IceoutCollector(BaseCollector):
                 """
                 result = await self._page.evaluate(js_code)
                 if result is not None:
-                    logger.info("[iceout] Direct API fetch successful")
+                    logger.info("[iceout] Direct API fetch successful (%d bytes)", len(result))
                     return bytes(result)
 
                 # Fetch failed (maybe session expired), fall through to full nav
-                logger.info("[iceout] In-page fetch failed, re-navigating...")
+                logger.warning(
+                    "[iceout] In-page fetch returned None (session may have expired), re-navigating..."
+                )
                 self._authenticated = False
             except Exception as e:
                 logger.debug("[iceout] In-page fetch error: %s", e)
@@ -282,12 +292,19 @@ class IceoutCollector(BaseCollector):
             )
             logger.info("[iceout] Navigation complete, checking for intercepted data")
 
-            # Wait a bit for any delayed API calls
-            await asyncio.sleep(3)
+            # Wait longer for Altcha proof-of-work + API calls to complete
+            # (increased from 3s to handle slower auth cycles)
+            logger.info("[iceout] Waiting 10 seconds for auth + API completion...")
+            await asyncio.sleep(10)
 
             # Check if we intercepted the report-feed response
             if self._intercepted_data:
                 self._authenticated = True
+                logger.info(
+                    "[iceout] Intercepted %d API response(s) during navigation, using most recent (%d bytes)",
+                    len(self._intercepted_data),
+                    len(self._intercepted_data[-1])
+                )
                 return self._intercepted_data[-1]  # Use most recent
 
             # The initial page load may fetch all reports without a since param.
@@ -367,9 +384,13 @@ class IceoutCollector(BaseCollector):
         try:
             raw_bytes = await self._navigate_and_fetch()
             if raw_bytes is None:
-                logger.warning("[iceout] No data received from API")
+                logger.warning(
+                    "[iceout] No data received from API (auth: %s, polls_since_auth: %d)",
+                    self._authenticated,
+                    self._polls_since_full_auth
+                )
                 return []
-            logger.info("[iceout] Received %d bytes from API", len(raw_bytes))
+            logger.info("[iceout] Received %d bytes from API (auth: %s)", len(raw_bytes), self._authenticated)
 
             data = msgpack.unpackb(raw_bytes, raw=False)
 
