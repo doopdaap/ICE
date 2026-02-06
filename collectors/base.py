@@ -51,7 +51,9 @@ class BaseCollector(ABC):
         """Main loop: collect, enqueue, sleep, repeat."""
         self.is_running = True
         backoff = 1
-        max_backoff = 300  # 5 minutes
+        max_backoff = 60  # Cap at 1 minute, not 5 minutes
+        consecutive_failures = 0
+        max_consecutive_failures = 10  # Reset backoff after this many failures
         cycle_count = 0
 
         logger.info("[%s] Collector starting", self.name)
@@ -62,7 +64,10 @@ class BaseCollector(ABC):
                 logger.info("[%s] Starting collection cycle %d", self.name, cycle_count)
 
                 reports = await self.collect()
-                backoff = 1  # reset on success
+
+                # Reset backoff on success
+                backoff = 1
+                consecutive_failures = 0
 
                 for report in reports:
                     await self.report_queue.put(report)
@@ -78,11 +83,25 @@ class BaseCollector(ABC):
                 logger.info("[%s] Collector cancelled", self.name)
                 break
             except Exception:
+                consecutive_failures += 1
                 logger.exception(
-                    "[%s] Error during collection, backing off %ds",
+                    "[%s] Error during collection (failure %d/%d), backing off %ds",
                     self.name,
+                    consecutive_failures,
+                    max_consecutive_failures,
                     backoff,
                 )
+
+                # If too many consecutive failures, reset backoff to avoid death spiral
+                if consecutive_failures >= max_consecutive_failures:
+                    logger.warning(
+                        "[%s] %d consecutive failures, resetting backoff to prevent spiral",
+                        self.name,
+                        consecutive_failures,
+                    )
+                    backoff = 1
+                    consecutive_failures = 0
+
                 await asyncio.sleep(backoff)
                 backoff = min(backoff * 2, max_backoff)
                 continue

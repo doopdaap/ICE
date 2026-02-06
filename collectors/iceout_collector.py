@@ -271,6 +271,7 @@ class IceoutCollector(BaseCollector):
             logger.info("[iceout] Using cached auth, fetching API directly")
             try:
                 # Use page.evaluate to make a fetch from the authenticated context
+                # Add timeout to prevent indefinite hangs
                 js_code = f"""
                 async () => {{
                     const resp = await fetch(
@@ -282,7 +283,10 @@ class IceoutCollector(BaseCollector):
                     return Array.from(new Uint8Array(buf));
                 }}
                 """
-                result = await self._page.evaluate(js_code)
+                result = await asyncio.wait_for(
+                    self._page.evaluate(js_code),
+                    timeout=30.0
+                )
                 if result is not None:
                     logger.info("[iceout] Direct API fetch successful (%d bytes)", len(result))
                     return bytes(result)
@@ -292,8 +296,11 @@ class IceoutCollector(BaseCollector):
                     "[iceout] In-page fetch returned None (session may have expired), re-navigating..."
                 )
                 self._authenticated = False
+            except asyncio.TimeoutError:
+                logger.warning("[iceout] In-page fetch timed out after 30s, re-navigating...")
+                self._authenticated = False
             except Exception as e:
-                logger.debug("[iceout] In-page fetch error: %s", e)
+                logger.warning("[iceout] In-page fetch error: %s", e)
                 self._authenticated = False
 
         # Full navigation — let the site's JS handle auth
@@ -335,12 +342,18 @@ class IceoutCollector(BaseCollector):
                     return Array.from(new Uint8Array(buf));
                 }}
                 """
-                result = await self._page.evaluate(js_code)
+                result = await asyncio.wait_for(
+                    self._page.evaluate(js_code),
+                    timeout=30.0
+                )
                 if result is not None:
                     self._authenticated = True
+                    logger.info("[iceout] Post-nav fetch successful (%d bytes)", len(result))
                     return bytes(result)
+            except asyncio.TimeoutError:
+                logger.warning("[iceout] Post-nav fetch timed out after 30s")
             except Exception as e:
-                logger.debug("[iceout] Post-nav fetch error: %s", e)
+                logger.warning("[iceout] Post-nav fetch error: %s", e)
 
             # Last resort: check intercepted data from initial page load
             if self._intercepted_data:

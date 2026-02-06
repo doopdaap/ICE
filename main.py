@@ -148,10 +148,20 @@ class ICEMonitor:
         """Process a single raw report: clean, filter, extract location, store."""
         now = datetime.now(timezone.utc)
 
-        # 3-hour freshness filter — discard stale reports
-        max_age = timedelta(seconds=self.config.report_max_age_seconds)
+        # Trusted community sources (iceout, stopice) are pre-validated as
+        # ICE-related and have structured location data — skip keyword filtering
+        is_trusted_source = report.source_type in ("iceout", "stopice")
+
+        # Freshness filter — discard stale reports
+        # Trusted sources get 6 hours (they're already vetted)
+        # Other sources get 3 hours
+        if is_trusted_source:
+            max_age = timedelta(hours=6)
+        else:
+            max_age = timedelta(seconds=self.config.report_max_age_seconds)
+
         if (now - report.timestamp) > max_age:
-            logger.debug(
+            logger.info(
                 "Skipping stale report [%s] from %s (age > %s)",
                 report.source_type,
                 report.timestamp.isoformat(),
@@ -163,10 +173,6 @@ class ICEMonitor:
         row_id = await self.db.insert_raw_report(report)
         if row_id is None:
             return  # Duplicate
-
-        # Trusted community sources (iceout, stopice) are pre-validated as
-        # ICE-related and have structured location data — skip keyword filtering
-        is_trusted_source = report.source_type in ("iceout", "stopice")
 
         # Clean and filter
         cleaned = clean_text(report.text)
