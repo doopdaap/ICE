@@ -184,14 +184,24 @@ class IceoutCollector(BaseCollector):
             logger.info("[iceout] Launching new Playwright browser...")
             from playwright.async_api import async_playwright
 
-            self._playwright = await async_playwright().start()
-            self._browser = await self._playwright.chromium.launch(
-                headless=True,
-                args=[
-                    "--disable-blink-features=AutomationControlled",
-                    "--no-sandbox",
-                ],
+            logger.info("[iceout] Starting Playwright...")
+            self._playwright = await asyncio.wait_for(
+                async_playwright().start(),
+                timeout=30.0
             )
+            logger.info("[iceout] Playwright started, launching Chromium...")
+            self._browser = await asyncio.wait_for(
+                self._playwright.chromium.launch(
+                    headless=True,
+                    args=[
+                        "--disable-blink-features=AutomationControlled",
+                        "--no-sandbox",
+                        "--disable-dev-shm-usage",  # Helps on low-memory servers
+                    ],
+                ),
+                timeout=30.0
+            )
+            logger.info("[iceout] Chromium launched, creating context...")
             self._context = await self._browser.new_context(
                 user_agent=(
                     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -205,9 +215,13 @@ class IceoutCollector(BaseCollector):
             # Set up response interception for the report-feed API
             self._page.on("response", self._on_response)
 
-            logger.info("[iceout] Headless browser launched")
+            logger.info("[iceout] Headless browser launched successfully")
             return True
 
+        except asyncio.TimeoutError:
+            logger.error("[iceout] Browser launch timed out after 30s")
+            await self._close_browser()
+            return False
         except Exception as e:
             logger.error("[iceout] Failed to launch browser: %s", e)
             await self._close_browser()
