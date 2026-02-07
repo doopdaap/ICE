@@ -32,6 +32,7 @@ class Config:
     twitter_password: str = ""
     twitter_poll_interval: int = 120
 
+
     # Reddit
     reddit_client_id: str = ""
     reddit_client_secret: str = ""
