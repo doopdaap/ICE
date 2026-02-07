@@ -138,9 +138,8 @@ geo_city_names:
 
 # ── RSS feeds ────────────────────────────────────────────────
 rss_feeds:
-  - https://www.miamiherald.com/latest-news/article1928039.ece/BINARY/rss
-  - https://www.local10.com/arcio/rss/
-  - https://wlrn.org/feed
+  - https://www.nbcmiami.com/news/local/feed/
+  - https://therealdeal.com/miami/feed/
 
 # ── Subreddits ───────────────────────────────────────────────
 subreddits:

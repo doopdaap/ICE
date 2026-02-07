@@ -148,9 +148,8 @@ geo_city_names:
 
 # ── RSS feeds ────────────────────────────────────────────────
 rss_feeds:
-  - https://www.dallasnews.com/arc/outboundfeeds/rss/
-  - https://www.dallasobserver.com/dallas/Rss.xml
-  - https://www.keranews.org/rss.xml
+  - https://www.wfaa.com/feeds/syndication/rss/news
+  - https://dallasvoice.com/feed/
 
 # ── Subreddits ───────────────────────────────────────────────
 subreddits:

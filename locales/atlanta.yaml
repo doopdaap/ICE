@@ -123,8 +123,7 @@ geo_city_names:
 
 # ── RSS feeds ────────────────────────────────────────────────
 rss_feeds:
-  - https://www.ajc.com/news/local/rss/
-  - https://www.gpbnews.org/rss.xml
+  - https://saportareport.com/feed/
 
 # ── Reddit ───────────────────────────────────────────────────
 subreddits:

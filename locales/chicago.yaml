@@ -170,9 +170,11 @@ geo_city_names:
 
 # ── RSS feeds ────────────────────────────────────────────────
 rss_feeds:
-  - https://www.chicagotribune.com/arcio/rss/
+  - https://www.chicagotribune.com/feed/
   - https://chicagoreader.com/feed/
   - https://blockclubchicago.org/feed/
+  - https://southsideweekly.com/feed/
+  - https://www.chicagoreporter.com/feed/
 
 # ── Subreddits ───────────────────────────────────────────────
 subreddits:
