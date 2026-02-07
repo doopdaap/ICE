@@ -87,54 +87,58 @@ class LocationExtractor:
         locations: list[ExtractedLocation] = []
         seen: set[str] = set()
 
-        # 1. PhraseMatcher against known Minneapolis locations
-        matches = self._matcher(doc)
-        for match_id, start, end in matches:
-            span_text = doc[start:end].text
-            key = span_text.lower()
-            if key in seen:
-                continue
-            seen.add(key)
+        try:
+            # 1. PhraseMatcher against known Minneapolis locations
+            matches = self._matcher(doc)
+            for match_id, start, end in matches:
+                span_text = doc[start:end].text
+                key = span_text.lower()
+                if key in seen:
+                    continue
+                seen.add(key)
 
-            entry = self._name_to_entry.get(key)
-            if entry:
-                centroid = entry.get("centroid", {})
-                locations.append(ExtractedLocation(
-                    raw_text=span_text,
-                    neighborhood=entry.get("name"),
-                    latitude=centroid.get("lat"),
-                    longitude=centroid.get("lon"),
-                    confidence=0.9,
-                ))
+                entry = self._name_to_entry.get(key)
+                if entry:
+                    centroid = entry.get("centroid", {})
+                    locations.append(ExtractedLocation(
+                        raw_text=span_text,
+                        neighborhood=entry.get("name"),
+                        latitude=centroid.get("lat"),
+                        longitude=centroid.get("lon"),
+                        confidence=0.9,
+                    ))
 
-        # 2. spaCy NER for GPE/LOC/FAC entities not already matched
-        for ent in doc.ents:
-            if ent.label_ not in ("GPE", "LOC", "FAC"):
-                continue
-            key = ent.text.lower()
-            if key in seen:
-                continue
-            seen.add(key)
+            # 2. spaCy NER for GPE/LOC/FAC entities not already matched
+            for ent in doc.ents:
+                if ent.label_ not in ("GPE", "LOC", "FAC"):
+                    continue
+                key = ent.text.lower()
+                if key in seen:
+                    continue
+                seen.add(key)
 
-            entry = self._name_to_entry.get(key)
-            if entry:
-                centroid = entry.get("centroid", {})
-                locations.append(ExtractedLocation(
-                    raw_text=ent.text,
-                    neighborhood=entry.get("name"),
-                    latitude=centroid.get("lat"),
-                    longitude=centroid.get("lon"),
-                    confidence=0.7,
-                ))
-            else:
-                # Known NER entity but not in gazetteer — lower confidence
-                locations.append(ExtractedLocation(
-                    raw_text=ent.text,
-                    neighborhood=None,
-                    latitude=None,
-                    longitude=None,
-                    confidence=0.3,
-                ))
+                entry = self._name_to_entry.get(key)
+                if entry:
+                    centroid = entry.get("centroid", {})
+                    locations.append(ExtractedLocation(
+                        raw_text=ent.text,
+                        neighborhood=entry.get("name"),
+                        latitude=centroid.get("lat"),
+                        longitude=centroid.get("lon"),
+                        confidence=0.7,
+                    ))
+                else:
+                    # Known NER entity but not in gazetteer — lower confidence
+                    locations.append(ExtractedLocation(
+                        raw_text=ent.text,
+                        neighborhood=None,
+                        latitude=None,
+                        longitude=None,
+                        confidence=0.3,
+                    ))
+        finally:
+            # Explicitly free the spaCy doc to prevent memory accumulation
+            del doc
 
         return locations
 

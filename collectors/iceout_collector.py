@@ -164,6 +164,7 @@ class IceoutCollector(BaseCollector):
         self._authenticated = False
         self._intercepted_data: list[bytes] = []
         self._polls_since_full_auth = 0  # Track polls since last full navigation
+        self._polls_since_browser_restart = 0  # Track for memory management
 
     def _kill_orphan_browsers(self) -> None:
         """Kill any orphaned Chromium processes to prevent memory leaks."""
@@ -433,6 +434,13 @@ class IceoutCollector(BaseCollector):
 
     async def _do_collect(self) -> list[RawReport]:
         """Internal collection logic with timeout wrapper."""
+        # Recycle browser every 20 polls (~40 min at 2-min intervals) to prevent memory growth
+        self._polls_since_browser_restart += 1
+        if self._polls_since_browser_restart >= 20:
+            logger.info("[iceout] Recycling browser to free memory (20 polls reached)")
+            await self._close_browser()
+            self._polls_since_browser_restart = 0
+
         if not await self._ensure_browser():
             logger.warning("[iceout] Browser not available, skipping cycle")
             return []
