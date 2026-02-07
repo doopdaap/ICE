@@ -110,14 +110,13 @@ class IceoutCollector(BaseCollector):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._playwright = None
-        self._browser = None
+        self._pool = None           # set in _ensure_browser
         self._context = None
         self._page = None
         self._authenticated = False
         self._intercepted_data: list[bytes] = []
         self._polls_since_full_auth = 0  # Track polls since last full navigation
-        self._polls_since_browser_restart = 0  # Track for memory management
+        self._polls_since_context_recycle = 0  # Track for memory management
         # Locale-aware geo filter
         locale = self.config.locale
         self._center_lat = locale.center_lat
@@ -154,22 +153,8 @@ class IceoutCollector(BaseCollector):
         desc = (report.get("location_description") or "").lower()
         return any(kw in desc for kw in self._location_keywords)
 
-    def _kill_orphan_browsers(self) -> None:
-        """Kill any orphaned Chromium processes to prevent memory leaks."""
-        try:
-            import subprocess
-            result = subprocess.run(
-                ["pkill", "-f", "chromium"],
-                capture_output=True,
-                timeout=5
-            )
-            if result.returncode == 0:
-                logger.info("[iceout] Killed orphan browser processes")
-        except Exception as e:
-            logger.debug("[iceout] Could not clean orphan browsers: %s", e)
-
     async def _ensure_browser(self) -> bool:
-        """Launch Playwright browser if not already running."""
+        """Obtain a browser context + page from the shared pool."""
         logger.info("[iceout] Ensuring browser is available...")
 
         if self._page is not None:
@@ -183,32 +168,13 @@ class IceoutCollector(BaseCollector):
                 logger.info("[iceout] Existing browser session died, resetting")
                 await self._close_browser()
 
-        # Kill any orphaned browser processes before launching new one
-        self._kill_orphan_browsers()
-
         try:
-            logger.info("[iceout] Launching new Playwright browser...")
-            from playwright.async_api import async_playwright
+            from collectors.browser_pool import BrowserPool
 
-            logger.info("[iceout] Starting Playwright...")
-            self._playwright = await asyncio.wait_for(
-                async_playwright().start(),
-                timeout=30.0
-            )
-            logger.info("[iceout] Playwright started, launching Chromium...")
-            self._browser = await asyncio.wait_for(
-                self._playwright.chromium.launch(
-                    headless=True,
-                    args=[
-                        "--disable-blink-features=AutomationControlled",
-                        "--no-sandbox",
-                        "--disable-dev-shm-usage",  # Helps on low-memory servers
-                    ],
-                ),
-                timeout=30.0
-            )
-            logger.info("[iceout] Chromium launched, creating context...")
-            self._context = await self._browser.new_context(
+            self._pool = BrowserPool.shared()
+
+            logger.info("[iceout] Requesting context from shared pool...")
+            self._context = await self._pool.new_context(
                 user_agent=(
                     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
                     "AppleWebKit/537.36 (KHTML, like Gecko) "
@@ -221,7 +187,7 @@ class IceoutCollector(BaseCollector):
             # Set up response interception for the report-feed API
             self._page.on("response", self._on_response)
 
-            logger.info("[iceout] Headless browser launched successfully")
+            logger.info("[iceout] Browser context ready (shared pool)")
             return True
 
         except asyncio.TimeoutError:
@@ -375,32 +341,18 @@ class IceoutCollector(BaseCollector):
             return None
 
     async def _close_browser(self) -> None:
-        """Close all Playwright resources."""
+        """Release our browser context back to the shared pool."""
         try:
             if self._page:
                 await self._page.close()
         except Exception:
             pass
-        try:
-            if self._context:
-                await self._context.close()
-        except Exception:
-            pass
-        try:
-            if self._browser:
-                await self._browser.close()
-        except Exception:
-            pass
-        try:
-            if self._playwright:
-                await self._playwright.stop()
-        except Exception:
-            pass
+
+        if self._pool and self._context:
+            await self._pool.close_context(self._context)
 
         self._page = None
         self._context = None
-        self._browser = None
-        self._playwright = None
         self._authenticated = False
 
     def get_poll_interval(self) -> int:
@@ -422,12 +374,12 @@ class IceoutCollector(BaseCollector):
 
     async def _do_collect(self) -> list[RawReport]:
         """Internal collection logic with timeout wrapper."""
-        # Recycle browser every 20 polls (~40 min at 2-min intervals) to prevent memory growth
-        self._polls_since_browser_restart += 1
-        if self._polls_since_browser_restart >= 20:
-            logger.info("[iceout] Recycling browser to free memory (20 polls reached)")
+        # Recycle context every 20 polls (~40 min at 2-min intervals) to prevent memory growth
+        self._polls_since_context_recycle += 1
+        if self._polls_since_context_recycle >= 20:
+            logger.info("[iceout] Recycling context to free memory (20 polls reached)")
             await self._close_browser()
-            self._polls_since_browser_restart = 0
+            self._polls_since_context_recycle = 0
 
         if not await self._ensure_browser():
             logger.warning("[iceout] Browser not available, skipping cycle")

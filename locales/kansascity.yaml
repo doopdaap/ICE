@@ -1,0 +1,160 @@
+# ============================================================
+# Kansas City, MO — Locale Configuration
+# ============================================================
+# Starter locale for ICE activity monitoring in the KC metro.
+# Kansas City straddles the MO/KS state line, so keywords
+# cover both sides.
+
+name: Kansas City
+display_name: "Kansas City Metro"
+timezone: America/Chicago
+
+# ── Geographic center & radius ────────────────────────────────
+center:
+  lat: 39.0997
+  lon: -94.5786
+radius_km: 50.0
+
+# ── Fallback location strings ────────────────────────────────
+fallback_location: "Kansas City area"
+fallback_location_unspecified: "Kansas City (unspecified)"
+
+# ── Geodata files (relative to project root) ─────────────────
+neighborhoods_file: ""
+landmarks_file: ""
+
+# ── Geographic keywords ──────────────────────────────────────
+geo_keywords:
+  # Metro names
+  - kansas city
+  - kc
+  - kcmo
+  - kck
+  - jackson county
+  - wyandotte county
+  - johnson county
+  - clay county
+  - platte county
+  - metro kc
+  - missouri
+  - kansas
+  # KC MO neighborhoods
+  - westside
+  - west bottoms
+  - crossroads
+  - downtown kc
+  - union hill
+  - midtown kc
+  - northeast kansas city
+  - independence avenue
+  - argentine
+  - armourdale
+  - rosedale
+  - strawberry hill
+  - quindaro
+  - westport
+  - plaza
+  - brookside
+  - waldo
+  - swope park
+  - ruskin heights
+  - grandview
+  - raytown
+  - blue springs
+  - lees summit
+  # KCK / suburbs
+  - overland park
+  - olathe
+  - shawnee
+  - lenexa
+  - merriam
+  - mission
+  - prairie village
+  - independence
+  - liberty
+  - gladstone
+  - north kansas city
+  - parkville
+  # Landmarks
+  - union station
+  - crown center
+  - power and light
+  - arrowhead stadium
+  - kauffman stadium
+  - kci airport
+
+geo_city_names:
+  - kansas city
+  - kc
+  - kcmo
+  - kck
+  - missouri
+  - mo
+  - kansas
+  - ks
+  - overland park
+  - olathe
+  - shawnee
+  - lenexa
+  - independence
+  - liberty
+  - gladstone
+  - blue springs
+  - lees summit
+  - raytown
+  - grandview
+  - north kansas city
+  - merriam
+  - mission
+  - jackson county
+  - wyandotte county
+  - johnson county
+  - clay county
+
+# ── RSS feeds ────────────────────────────────────────────────
+rss_feeds:
+  - https://www.kansascity.com/latest-news/index.rss
+  - https://www.kcur.org/feed
+
+# ── Reddit ───────────────────────────────────────────────────
+subreddits:
+  - kansascity
+  - missouri
+  - immigration
+
+# ── Bluesky ──────────────────────────────────────────────────
+bluesky:
+  search_queries:
+    - "ICE Kansas City"
+    - "ICE Missouri"
+    - "immigration raid Kansas City"
+    - "deportation Missouri"
+  monitored_accounts: []
+  trusted_accounts: []
+
+# ── Twitter/X ────────────────────────────────────────────────
+twitter:
+  search_queries:
+    - '(ICE OR "immigration enforcement") ("Kansas City" OR KCMO OR KCK) -is:retweet'
+    - '(ICE raid OR "ICE agents" OR deportation) (Missouri OR Kansas) -is:retweet'
+    - '("federal agents" OR "unmarked van" OR "ICE sighting") "Kansas City" -is:retweet'
+    - '(detained OR detention OR "immigration arrest") "Kansas City" -is:retweet'
+  reporter_accounts: []
+  activist_accounts:
+    - UnitedWeDream
+    - ConMijente
+  news_accounts: []
+  official_accounts: []
+
+# ── Instagram ────────────────────────────────────────────────
+instagram:
+  monitored_accounts: []
+
+# ── Discord display ──────────────────────────────────────────
+discord:
+  bot_description: "Kansas City ICE Activity Monitor"
+  footer_text: "KC ICE Monitor | Stay safe, know your rights"
+  subscribe_message: "ICE activity is reported in the Kansas City area"
+  help_description: >-
+    This bot monitors multiple sources for ICE enforcement activity
+    in the Kansas City metro area and sends alerts to subscribed channels.

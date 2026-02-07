@@ -1,0 +1,172 @@
+# ============================================================
+# Atlanta — Locale Configuration
+# ============================================================
+# Starter locale for ICE activity monitoring in metro Atlanta.
+# Accounts and feeds are placeholders — expand as you find
+# active reporters and orgs covering immigration in the area.
+
+name: Atlanta
+display_name: "Atlanta Metro"
+timezone: America/New_York
+
+# ── Geographic center & radius ────────────────────────────────
+center:
+  lat: 33.7490
+  lon: -84.3880
+radius_km: 50.0
+
+# ── Fallback location strings ────────────────────────────────
+fallback_location: "Atlanta area"
+fallback_location_unspecified: "Atlanta (unspecified)"
+
+# ── Geodata files (relative to project root) ─────────────────
+# Create these for neighborhood-level precision, or leave blank
+# to rely on keyword-only matching.
+neighborhoods_file: ""
+landmarks_file: ""
+
+# ── Geographic keywords ──────────────────────────────────────
+geo_keywords:
+  # Metro names
+  - atlanta
+  - atl
+  - fulton county
+  - dekalb county
+  - gwinnett county
+  - cobb county
+  - clayton county
+  - metro atlanta
+  - georgia
+  # City neighborhoods
+  - midtown atlanta
+  - downtown atlanta
+  - buckhead
+  - east atlanta
+  - west end
+  - old fourth ward
+  - little five points
+  - east point
+  - college park
+  - vine city
+  - english avenue
+  - bankhead
+  - grove park
+  - southwest atlanta
+  - mechanicsville
+  - grant park
+  - inman park
+  - kirkwood
+  - edgewood
+  - clarkston
+  - chamblee
+  - doraville
+  - norcross
+  - buford highway
+  - pleasant hill
+  # Suburbs
+  - decatur
+  - marietta
+  - smyrna
+  - roswell
+  - alpharetta
+  - kennesaw
+  - lawrenceville
+  - duluth
+  - stone mountain
+  - sandy springs
+  - brookhaven
+  - dunwoody
+  - tucker
+  - lilburn
+  - snellville
+  - peachtree city
+  - forest park
+  - jonesboro
+  - riverdale
+  # Landmarks / streets
+  - peachtree street
+  - hartsfield-jackson
+  - atlantic station
+  - lenox square
+  - piedmont park
+
+geo_city_names:
+  - atlanta
+  - atl
+  - georgia
+  - ga
+  - decatur
+  - marietta
+  - smyrna
+  - roswell
+  - alpharetta
+  - lawrenceville
+  - duluth
+  - kennesaw
+  - stone mountain
+  - sandy springs
+  - brookhaven
+  - dunwoody
+  - clarkston
+  - chamblee
+  - doraville
+  - norcross
+  - east point
+  - college park
+  - forest park
+  - jonesboro
+  - fulton county
+  - dekalb county
+  - gwinnett county
+  - cobb county
+  - clayton county
+
+# ── RSS feeds ────────────────────────────────────────────────
+rss_feeds:
+  - https://www.ajc.com/news/local/rss/
+  - https://www.gpbnews.org/rss.xml
+
+# ── Reddit ───────────────────────────────────────────────────
+subreddits:
+  - Atlanta
+  - Georgia
+  - immigration
+
+# ── Bluesky ──────────────────────────────────────────────────
+bluesky:
+  search_queries:
+    - "ICE Atlanta"
+    - "ICE Georgia"
+    - "immigration raid Atlanta"
+    - "deportation Georgia"
+  monitored_accounts: []
+  trusted_accounts: []
+
+# ── Twitter/X ────────────────────────────────────────────────
+twitter:
+  search_queries:
+    - '(ICE OR "immigration enforcement") (Atlanta OR "Fulton County" OR "DeKalb County") -is:retweet'
+    - '(ICE raid OR "ICE agents" OR deportation) Georgia -is:retweet'
+    - '("federal agents" OR "unmarked van" OR "ICE sighting") Atlanta -is:retweet'
+    - '(detained OR detention OR "immigration arrest") Atlanta -is:retweet'
+  reporter_accounts: []
+  activist_accounts:
+    - UnitedWeDream
+    - ConMijente
+    - GAABORTNF
+  news_accounts:
+    - ajabortnf
+  official_accounts: []
+
+# ── Instagram ────────────────────────────────────────────────
+instagram:
+  monitored_accounts: []
+
+# ── Discord display ──────────────────────────────────────────
+discord:
+  bot_description: "Atlanta ICE Activity Monitor"
+  footer_text: "Atlanta ICE Monitor | Stay safe, know your rights"
+  subscribe_message: "ICE activity is reported in the Atlanta area"
+  help_description: >-
+    This bot monitors multiple sources for ICE enforcement activity
+    in the Atlanta metro area and sends alerts to subscribed channels.

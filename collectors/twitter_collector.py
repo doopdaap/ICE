@@ -218,8 +218,7 @@ class TwitterCollector(BaseCollector):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._playwright = None
-        self._browser = None
+        self._pool = None          # set in _ensure_browser
         self._context = None
         self._logged_in = False
         self._login_failed = False
@@ -255,22 +254,15 @@ class TwitterCollector(BaseCollector):
         return bool(self.config.twitter_username and self.config.twitter_password)
 
     async def _ensure_browser(self) -> bool:
-        """Launch Playwright browser and restore cookies if available."""
+        """Obtain a browser context from the shared pool."""
         if self._context is not None:
             return True
 
         try:
-            from playwright.async_api import async_playwright
+            from collectors.browser_pool import BrowserPool
 
-            self._playwright = await async_playwright().start()
-            self._browser = await self._playwright.chromium.launch(
-                headless=True,
-                args=[
-                    "--disable-blink-features=AutomationControlled",
-                    "--no-sandbox",
-                ],
-            )
-            self._context = await self._browser.new_context(
+            self._pool = BrowserPool.shared()
+            self._context = await self._pool.new_context(
                 user_agent=(
                     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
                     "AppleWebKit/537.36 (KHTML, like Gecko) "
@@ -289,11 +281,11 @@ class TwitterCollector(BaseCollector):
                 except Exception as e:
                     logger.debug("[twitter] Could not restore cookies: %s", e)
 
-            logger.info("[twitter] Playwright browser launched (headed mode)")
+            logger.info("[twitter] Browser context ready (shared pool)")
             return True
 
         except Exception as e:
-            logger.error("[twitter] Failed to launch browser: %s", e)
+            logger.error("[twitter] Failed to get browser context: %s", e)
             await self._close_browser()
             return False
 
@@ -1075,30 +1067,15 @@ class TwitterCollector(BaseCollector):
         return reports
 
     async def _close_browser(self) -> None:
-        """Close all Playwright resources."""
+        """Release our browser context back to the shared pool."""
         # Save cookies before closing
         if self._logged_in:
             await self._save_cookies()
 
-        try:
-            if self._context:
-                await self._context.close()
-        except Exception:
-            pass
-        try:
-            if self._browser:
-                await self._browser.close()
-        except Exception:
-            pass
-        try:
-            if self._playwright:
-                await self._playwright.stop()
-        except Exception:
-            pass
+        if self._pool and self._context:
+            await self._pool.close_context(self._context)
 
         self._context = None
-        self._browser = None
-        self._playwright = None
 
     def stop(self) -> None:
         super().stop()
