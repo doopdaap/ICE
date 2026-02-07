@@ -2,7 +2,7 @@ import os
 from dataclasses import dataclass, field
 from dotenv import load_dotenv
 
-from processing.locale import Locale, load_locale, load_locales
+from processing.locale import Locale, load_locale, load_locales, load_all_locales
 
 
 load_dotenv()
@@ -23,8 +23,11 @@ def _get_float(key: str, default: float) -> float:
 
 @dataclass(frozen=True)
 class Config:
-    # Locale — all location-specific data lives here
+    # Locale — merged locale for collectors (all cities combined)
     locale: Locale = field(default_factory=lambda: load_locale())
+    # Per-city locale objects for city tagging and display
+    city_locales: dict = field(default_factory=dict)
+    available_cities: tuple = ()
 
     # Discord - supports both webhook (single channel) and bot (multi-server) modes
     discord_webhook_url: str = ""      # For webhook mode (original)
@@ -92,7 +95,18 @@ class Config:
 
 
 def load_config() -> Config:
-    locale = load_locales()  # supports comma-separated LOCALE env var
+    # If LOCALE env var is set, load only those cities (backward compat).
+    # Otherwise load ALL available locales.
+    locale_env = os.getenv("LOCALE", "")
+    if locale_env:
+        names = [n.strip() for n in locale_env.split(",") if n.strip()]
+        city_locales = {name: load_locale(name) for name in names}
+        from processing.locale import merge_locales
+        locale = merge_locales(list(city_locales.values()))
+    else:
+        city_locales, locale = load_all_locales()
+
+    available_cities = tuple(sorted(city_locales.keys()))
 
     reddit_subs_raw = os.getenv("REDDIT_SUBREDDITS", "")
     reddit_subs = (
@@ -110,6 +124,8 @@ def load_config() -> Config:
 
     return Config(
         locale=locale,
+        city_locales=city_locales,
+        available_cities=available_cities,
         discord_webhook_url=os.getenv("DISCORD_WEBHOOK_URL", ""),
         discord_bot_token=os.getenv("DISCORD_BOT_TOKEN", ""),
         discord_bot_client_id=os.getenv("DISCORD_BOT_CLIENT_ID", ""),

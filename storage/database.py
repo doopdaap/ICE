@@ -31,6 +31,7 @@ CREATE TABLE IF NOT EXISTS raw_reports (
     cluster_id INTEGER,
     notified INTEGER DEFAULT 0,
     expired INTEGER DEFAULT 0,
+    city TEXT DEFAULT '',
     created_at TEXT DEFAULT (datetime('now')),
     UNIQUE(source_type, source_id)
 );
@@ -47,6 +48,7 @@ CREATE TABLE IF NOT EXISTS clusters (
     latest_report TEXT,
     notified INTEGER DEFAULT 0,
     notified_at TEXT,
+    city TEXT DEFAULT '',
     created_at TEXT DEFAULT (datetime('now'))
 );
 
@@ -80,8 +82,20 @@ class Database:
         await self._db.execute("PRAGMA journal_mode=WAL")
         await self._db.execute("PRAGMA busy_timeout=5000")
         await self._db.executescript(SCHEMA_SQL)
+        await self._migrate_add_city_column()
         await self._db.commit()
         logger.info("Database initialized at %s", self.db_path)
+
+    async def _migrate_add_city_column(self) -> None:
+        """Add city column to existing tables if missing (backward compat)."""
+        for table in ("raw_reports", "clusters"):
+            cursor = await self._db.execute(f"PRAGMA table_info({table})")
+            columns = {row[1] for row in await cursor.fetchall()}
+            if "city" not in columns:
+                await self._db.execute(
+                    f"ALTER TABLE {table} ADD COLUMN city TEXT DEFAULT ''"
+                )
+                logger.info("Migrated %s: added city column", table)
 
     async def close(self) -> None:
         if self._db:
@@ -122,12 +136,13 @@ class Database:
         latitude: float | None,
         longitude: float | None,
         keywords_matched: list[str],
+        city: str = "",
     ) -> None:
         await self._db.execute(
             """UPDATE raw_reports
                SET cleaned_text = ?, is_relevant = ?,
                    primary_neighborhood = ?, latitude = ?, longitude = ?,
-                   keywords_matched = ?
+                   keywords_matched = ?, city = ?
                WHERE id = ?""",
             (
                 cleaned_text,
@@ -136,6 +151,7 @@ class Database:
                 latitude,
                 longitude,
                 json.dumps(keywords_matched),
+                city,
                 report_id,
             ),
         )
@@ -176,6 +192,7 @@ class Database:
                 keywords_matched=json.loads(row["keywords_matched"] or "[]"),
                 is_relevant=bool(row["is_relevant"]),
                 cluster_id=row["cluster_id"],
+                city=row["city"] or "",
             ))
         return results
 
@@ -189,12 +206,14 @@ class Database:
         unique_source_types: list[str],
         earliest_report: datetime,
         latest_report: datetime,
+        city: str = "",
     ) -> int:
         cursor = await self._db.execute(
             """INSERT INTO clusters
                (primary_location, latitude, longitude, confidence_score,
-                source_count, unique_source_types, earliest_report, latest_report)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                source_count, unique_source_types, earliest_report, latest_report,
+                city)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (
                 primary_location,
                 latitude,
@@ -204,6 +223,7 @@ class Database:
                 json.dumps(unique_source_types),
                 earliest_report.isoformat(),
                 latest_report.isoformat(),
+                city,
             ),
         )
         await self._db.commit()
@@ -275,7 +295,7 @@ class Database:
         cursor = await self._db.execute(
             """SELECT id, primary_location, latitude, longitude,
                       confidence_score, source_count, unique_source_types,
-                      earliest_report, latest_report
+                      earliest_report, latest_report, city
                FROM clusters
                WHERE notified = 1
                  AND latest_report >= ?""",

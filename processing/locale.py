@@ -91,7 +91,7 @@ class Locale:
         they match across whitespace variants.
         """
         parts: list[str] = []
-        for kw in sorted(self.geo_keywords, key=len, reverse=True):
+        for kw in sorted(self.geo_keywords, key=lambda k: len(str(k)), reverse=True):
             escaped = re.escape(kw)
             # Allow flexible whitespace/hyphens in multi-word keywords
             escaped = re.sub(r"\\ ", r"[\\s-]+", escaped)
@@ -171,8 +171,8 @@ def load_locale(name: str | None = None) -> Locale:
         neighborhoods_file=_resolve_path(data.get("neighborhoods_file", "")),
         landmarks_file=_resolve_path(data.get("landmarks_file", "")),
 
-        geo_keywords=frozenset(data.get("geo_keywords", [])),
-        geo_city_names=frozenset(data.get("geo_city_names", [])),
+        geo_keywords=frozenset(str(kw) for kw in data.get("geo_keywords", [])),
+        geo_city_names=frozenset(str(kw) for kw in data.get("geo_city_names", [])),
 
         rss_feeds=tuple(data.get("rss_feeds", [])),
         subreddits=tuple(data.get("subreddits", [])),
@@ -240,6 +240,27 @@ def load_locales(names: str | None = None) -> Locale:
 
     locales = [load_locale(p) for p in parts]
     return merge_locales(locales)
+
+
+def load_all_locales() -> tuple[dict[str, Locale], Locale]:
+    """Load every locale YAML in the locales/ directory.
+
+    Returns
+    -------
+    (city_locales, merged_locale)
+        city_locales : dict mapping locale name -> individual Locale
+        merged_locale : single merged Locale for collection (all cities unioned)
+    """
+    all_names = sorted(p.stem for p in _LOCALES_DIR.glob("*.yaml"))
+    if not all_names:
+        raise FileNotFoundError(f"No locale YAML files found in {_LOCALES_DIR}")
+
+    city_locales = {name: load_locale(name) for name in all_names}
+    merged = merge_locales(list(city_locales.values()))
+    logger.info(
+        "Loaded all %d locales: %s", len(city_locales), ", ".join(all_names)
+    )
+    return city_locales, merged
 
 
 def merge_locales(locales: list[Locale]) -> Locale:

@@ -34,6 +34,8 @@ class Correlator:
         """Run one correlation cycle.
 
         Returns newly corroborated incidents AND updates to existing ones.
+        Reports are grouped by city and correlated independently per city
+        to prevent cross-city clustering.
         """
         window = self.config.correlation_window_seconds
         since = datetime.now(timezone.utc) - timedelta(seconds=window)
@@ -44,16 +46,33 @@ class Correlator:
             return []
 
         logger.info("Correlating %d recent relevant reports", len(reports))
+
+        # Group reports by city for independent correlation
+        from collections import defaultdict
+        by_city: dict[str, list[ProcessedReport]] = defaultdict(list)
         for r in reports:
-            logger.info(
-                "  -> [%s] %s (cluster_id=%s, notified=%s)",
-                r.source_type, r.original_text[:50].replace('\n', ' '),
-                r.cluster_id, getattr(r, 'notified', 'N/A')
-            )
+            by_city[r.city or ""].append(r)
+
+        all_incidents: list[CorroboratedIncident] = []
+
+        for city, city_reports in by_city.items():
+            if not city:
+                logger.debug("Skipping %d reports with no city tag", len(city_reports))
+                continue
+
+            incidents = await self._correlate_city(city, city_reports)
+            all_incidents.extend(incidents)
+
+        return all_incidents
+
+    async def _correlate_city(
+        self, city: str, reports: list[ProcessedReport]
+    ) -> list[CorroboratedIncident]:
+        """Run correlation for a single city's reports."""
+        logger.info("Correlating %d reports for city: %s", len(reports), city)
 
         # Separate reports into already-clustered and unclustered
         unclustered = [r for r in reports if r.cluster_id is None]
-        logger.info("Unclustered reports: %d", len(unclustered))
         clustered_by_id: dict[int, list[ProcessedReport]] = {}
         for r in reports:
             if r.cluster_id is not None:
@@ -62,10 +81,9 @@ class Correlator:
         incidents: list[CorroboratedIncident] = []
 
         # ── Phase 1: Check for updates to existing notified clusters ──
-        # Try to match unclustered reports to existing clusters
         if unclustered:
             update_incidents = await self._check_cluster_updates(
-                unclustered, clustered_by_id, reports
+                unclustered, clustered_by_id, reports, city=city
             )
             incidents.extend(update_incidents)
 
@@ -74,16 +92,14 @@ class Correlator:
 
         # ── Phase 2: Find new corroborated clusters among remaining ──
         if len(still_unclustered) >= 2:
-            new_incidents = await self._find_new_clusters(still_unclustered)
+            new_incidents = await self._find_new_clusters(still_unclustered, city=city)
             incidents.extend(new_incidents)
 
         # ── Phase 3: Single-source alerts from high-priority sources ──
-        # High-priority sources (Iceout, StopICE) can trigger alerts without
-        # corroboration since they are trusted community reporting platforms
         still_unclustered = [r for r in still_unclustered if r.cluster_id is None]
         if still_unclustered:
             high_priority_incidents = await self._check_high_priority_singles(
-                still_unclustered
+                still_unclustered, city=city
             )
             incidents.extend(high_priority_incidents)
 
@@ -94,6 +110,7 @@ class Correlator:
         unclustered: list[ProcessedReport],
         clustered_by_id: dict[int, list[ProcessedReport]],
         all_reports: list[ProcessedReport],
+        city: str = "",
     ) -> list[CorroboratedIncident]:
         """Check if any unclustered reports match existing notified clusters."""
         # Only get clusters that haven't expired (within cluster_expiry_hours)
@@ -181,6 +198,7 @@ class Correlator:
                 latest_report=max(timestamps),
                 notification_type="update",
                 new_reports=new_matches,
+                city=city,
             ))
 
             logger.info(
@@ -233,7 +251,7 @@ class Correlator:
         return best_score
 
     async def _check_high_priority_singles(
-        self, reports: list[ProcessedReport]
+        self, reports: list[ProcessedReport], city: str = ""
     ) -> list[CorroboratedIncident]:
         """Create single-source alerts for high-priority trusted sources.
 
@@ -267,8 +285,10 @@ class Correlator:
             # Use slightly lower confidence for single-source
             confidence = 0.65  # Trusted but single source
 
-            # Location from the report
-            primary_location = report.primary_neighborhood or self.config.locale.fallback_location
+            # Location from the report — use city-specific fallback
+            city_locale = self.config.city_locales.get(city)
+            fallback = city_locale.fallback_location if city_locale else self.config.locale.fallback_location
+            primary_location = report.primary_neighborhood or fallback
 
             # Create cluster for this single report
             report_ids = [report.id] if report.id is not None else []
@@ -281,6 +301,7 @@ class Correlator:
                 unique_source_types=list(source_types),
                 earliest_report=report.timestamp,
                 latest_report=report.timestamp,
+                city=city,
             )
 
             if report_ids:
@@ -300,6 +321,7 @@ class Correlator:
                 latest_report=report.timestamp,
                 notification_type="new",
                 new_reports=[report],
+                city=city,
             )
             incidents.append(incident)
 
@@ -313,7 +335,7 @@ class Correlator:
         return incidents
 
     async def _find_new_clusters(
-        self, reports: list[ProcessedReport]
+        self, reports: list[ProcessedReport], city: str = ""
     ) -> list[CorroboratedIncident]:
         """Find new corroborated clusters among unclustered reports."""
         if len(reports) < 2:
@@ -332,7 +354,7 @@ class Correlator:
             if len(source_types) < self.config.min_corroboration_sources:
                 continue
 
-            incident = await self._build_incident(cluster_reports, source_types)
+            incident = await self._build_incident(cluster_reports, source_types, city=city)
             if incident is not None:
                 incidents.append(incident)
 
@@ -451,16 +473,19 @@ class Correlator:
         self,
         reports: list[ProcessedReport],
         source_types: set[str],
+        city: str = "",
     ) -> CorroboratedIncident | None:
         """Create a CorroboratedIncident and persist it to the database."""
-        # Determine primary location
+        # Determine primary location — use city-specific fallback
         neighborhoods = [
             r.primary_neighborhood for r in reports if r.primary_neighborhood
         ]
         if neighborhoods:
             primary_location = max(set(neighborhoods), key=neighborhoods.count)
         else:
-            primary_location = self.config.locale.fallback_location_unspecified
+            city_locale = self.config.city_locales.get(city)
+            fallback = city_locale.fallback_location_unspecified if city_locale else self.config.locale.fallback_location_unspecified
+            primary_location = fallback
 
         # Average coordinates from reports that have them
         lats = [r.latitude for r in reports if r.latitude is not None]
@@ -486,6 +511,7 @@ class Correlator:
             unique_source_types=list(source_types),
             earliest_report=earliest,
             latest_report=latest,
+            city=city,
         )
 
         if report_ids:
@@ -504,6 +530,7 @@ class Correlator:
             latest_report=latest,
             notification_type="new",
             new_reports=reports,
+            city=city,
         )
 
     def _compute_confidence(

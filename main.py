@@ -1,6 +1,6 @@
-"""Minneapolis ICE Activity Monitor
+"""ICE Activity Monitor
 
-Monitors multiple data sources for ICE enforcement activity in Minneapolis,
+Monitors multiple data sources for ICE enforcement activity across multiple cities,
 correlates reports across sources, and forwards corroborated incidents to Discord.
 
 Usage:
@@ -58,6 +58,10 @@ class ICEMonitor:
         self.notifier = DiscordNotifier(config)
         self._location_extractor = None  # Lazy-loaded (spaCy is heavy)
         self._shutdown_event = asyncio.Event()
+
+        # City tagger for multi-city support
+        from processing.city_tagger import CityTagger
+        self._city_tagger = CityTagger(config.city_locales)
 
     def _init_collectors(self) -> None:
         """Initialize collectors based on available configuration."""
@@ -227,6 +231,9 @@ class ICEMonitor:
                 locations = extractor.extract(cleaned)
                 neighborhood, lat, lon = extractor.get_primary_location(locations)
 
+        # Tag with city
+        city = self._city_tagger.tag(cleaned, lat, lon) if relevant else ""
+
         await self.db.update_report_processing(
             report_id=row_id,
             cleaned_text=cleaned,
@@ -235,14 +242,16 @@ class ICEMonitor:
             latitude=lat,
             longitude=lon,
             keywords_matched=keywords,
+            city=city,
         )
 
         if relevant:
             logger.info(
-                "✓ RELEVANT: [%s] %s (location: %s)",
+                "✓ RELEVANT: [%s] %s (location: %s, city: %s)",
                 report.source_type,
                 report.text[:80].replace('\n', ' '),
                 neighborhood or "unknown",
+                city or "unknown",
             )
         else:
             logger.debug(
@@ -368,11 +377,9 @@ class ICEMonitor:
         if self.config.discord_bot_token:
             try:
                 from notifications.discord_bot import ICEAlertBot, _set_bot_instance
-                locale = self.config.locale
                 self._bot = ICEAlertBot(
                     self.config.discord_bot_token,
-                    locale_name=locale.display_name,
-                    locale_area=locale.fallback_location,
+                    available_cities=list(self.config.available_cities),
                 )
                 _set_bot_instance(self._bot)
                 logger.info("Discord bot initialized, starting in background...")

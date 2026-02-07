@@ -36,6 +36,7 @@ class ProcessedReport:
     keywords_matched: list[str] = field(default_factory=list)
     is_relevant: bool = False
     cluster_id: int | None = None
+    city: str = ""
 
 
 @dataclass
@@ -56,3 +57,4 @@ class CorroboratedIncident:
     # "update" = additional source confirmed existing incident
     notification_type: str = "new"
     new_reports: list[ProcessedReport] = field(default_factory=list)
+    city: str = ""

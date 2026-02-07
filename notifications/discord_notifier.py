@@ -75,6 +75,7 @@ class DiscordNotifier:
         self._use_webhook = bool(self.webhook_url)
         self._use_bot = bool(self.bot_token)
         self._locale = config.locale
+        self._city_locales = config.city_locales
 
     def _build_new_incident_embed(
         self, incident: CorroboratedIncident
@@ -83,17 +84,25 @@ class DiscordNotifier:
         color = _get_color(incident)
         conf = _confidence_emoji(incident.confidence_score)
 
-        # Title: location front and center
-        location = incident.primary_location or self._locale.fallback_location
+        # Title: location front and center, with city
+        city_locale = self._city_locales.get(incident.city) if incident.city else None
+        fallback = city_locale.fallback_location if city_locale else self._locale.fallback_location
+        location = incident.primary_location or fallback
+        city_label = incident.city.title() if incident.city else ""
+        title = f"ICE ACTIVITY: {location}"
+        if city_label and city_label.lower() not in location.lower():
+            title += f" ({city_label})"
+
         embed = DiscordEmbed(
-            title=f"ICE ACTIVITY: {location}",
+            title=title,
             color=color,
         )
 
         # Topline summary — the most important info in 1-2 lines
-        time_str = _format_time_local(incident.earliest_report, self._locale.timezone)
+        tz = city_locale.timezone if city_locale else self._locale.timezone
+        time_str = _format_time_local(incident.earliest_report, tz)
         if incident.earliest_report != incident.latest_report:
-            time_str += f" - {_format_time_local(incident.latest_report, self._locale.timezone)}"
+            time_str += f" - {_format_time_local(incident.latest_report, tz)}"
 
         platform_names = sorted(
             SOURCE_LABELS.get(s, s) for s in incident.unique_source_types
@@ -103,7 +112,7 @@ class DiscordNotifier:
             f"**{conf} confidence** | "
             f"{incident.source_count} reports across "
             f"{', '.join(platform_names)}\n"
-            f"First reported: {time_str} CT"
+            f"First reported: {time_str}"
         )
         embed.set_description(summary)
 
@@ -140,10 +149,16 @@ class DiscordNotifier:
     ) -> DiscordEmbed:
         """Build embed for an UPDATE to an existing incident."""
         color = COLOR_UPDATE
-        location = incident.primary_location or self._locale.fallback_location
+        city_locale = self._city_locales.get(incident.city) if incident.city else None
+        fallback = city_locale.fallback_location if city_locale else self._locale.fallback_location
+        location = incident.primary_location or fallback
+        city_label = incident.city.title() if incident.city else ""
+        title = f"UPDATE: {location}"
+        if city_label and city_label.lower() not in location.lower():
+            title += f" ({city_label})"
 
         embed = DiscordEmbed(
-            title=f"UPDATE: {location}",
+            title=title,
             color=color,
         )
 

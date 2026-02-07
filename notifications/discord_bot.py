@@ -48,17 +48,16 @@ SUBSCRIPTIONS_FILE = Path("discord_subscriptions.json")
 class ICEAlertBot(commands.Bot):
     """Discord bot for distributing ICE activity alerts."""
 
-    def __init__(self, token: str, *, locale_name: str = "Minneapolis", locale_area: str = "Minneapolis area"):
+    def __init__(self, token: str, *, available_cities: list[str] | None = None):
         intents = discord.Intents.default()
         intents.message_content = True
 
-        self._locale_name = locale_name
-        self._locale_area = locale_area
+        self.available_cities = available_cities or []
 
         super().__init__(
             command_prefix="!ice ",
             intents=intents,
-            description=f"{locale_name} ICE Activity Monitor",
+            description="ICE Activity Monitor",
         )
 
         self.token = token
@@ -118,9 +117,10 @@ class ICEAlertBot(commands.Bot):
         guild_name: str,
         channel_name: str,
         subscribed_by: int,
+        city: str = "",
         location_filter: Optional[str] = None,
     ) -> bool:
-        """Subscribe a channel to receive alerts."""
+        """Subscribe a channel to receive alerts for a specific city."""
         if channel_id in self.subscribed_channels:
             return False  # Already subscribed
 
@@ -130,6 +130,7 @@ class ICEAlertBot(commands.Bot):
             "channel_name": channel_name,
             "subscribed_by": subscribed_by,
             "subscribed_at": datetime.now(timezone.utc).isoformat(),
+            "city": city,
             "location_filter": location_filter,
             "alert_count": 0,
         }
@@ -155,7 +156,13 @@ class ICEAlertBot(commands.Bot):
         failed_channels = []
 
         for channel_id, config in list(self.subscribed_channels.items()):
-            # Check location filter
+            # Check city filter
+            sub_city = config.get("city", "")
+            if sub_city and incident.city:
+                if sub_city.lower() != incident.city.lower():
+                    continue  # Skip - wrong city
+
+            # Check neighborhood location filter
             location_filter = config.get("location_filter")
             if location_filter:
                 if location_filter.lower() not in incident.primary_location.lower():
@@ -274,8 +281,9 @@ class ICEAlertBot(commands.Bot):
             )
 
         # Footer
+        city_label = incident.city.title() if incident.city else "ICE"
         embed.set_footer(
-            text=f"{self._locale_name} ICE Monitor | Stay safe, know your rights"
+            text=f"{city_label} ICE Monitor | Stay safe, know your rights"
         )
 
         return embed
@@ -292,21 +300,40 @@ class ICECommands(commands.Cog):
         self.bot = bot
 
     @app_commands.command(name="subscribe", description="Subscribe this channel to ICE activity alerts")
-    @app_commands.describe(location="Optional: Filter alerts to a specific neighborhood")
+    @app_commands.describe(
+        city="Which city to receive alerts for",
+        location="Optional: Filter alerts to a specific neighborhood",
+    )
     @app_commands.checks.has_permissions(manage_channels=True)
     async def subscribe(
         self,
         interaction: discord.Interaction,
+        city: str,
         location: Optional[str] = None,
     ):
-        """Subscribe the current channel to alerts."""
+        """Subscribe the current channel to alerts for a specific city."""
         channel = interaction.channel
         if not isinstance(channel, discord.TextChannel):
             await interaction.response.send_message(
-                "❌ This command only works in text channels.",
+                "This command only works in text channels.",
                 ephemeral=True,
             )
             return
+
+        # Validate city
+        valid_cities = {c.lower(): c for c in self.bot.available_cities}
+        if city.lower() not in valid_cities:
+            cities_list = ", ".join(c.title() for c in sorted(self.bot.available_cities))
+            await interaction.response.send_message(
+                f"Unknown city: **{city}**\n"
+                f"Available cities: {cities_list}\n"
+                f"Use `/ice cities` to see the full list.",
+                ephemeral=True,
+            )
+            return
+
+        # Use the canonical name
+        city_key = valid_cities[city.lower()]
 
         success = self.bot.subscribe_channel(
             channel_id=channel.id,
@@ -314,29 +341,42 @@ class ICECommands(commands.Cog):
             guild_name=interaction.guild.name if interaction.guild else "Unknown",
             channel_name=channel.name,
             subscribed_by=interaction.user.id,
+            city=city_key,
             location_filter=location,
         )
 
         if success:
-            filter_msg = f" (filtered to: {location})" if location else ""
+            filter_msg = f" (neighborhood: {location})" if location else ""
             await interaction.response.send_message(
-                f"✅ This channel is now subscribed to ICE activity alerts{filter_msg}.\n\n"
-                f"You will receive notifications when ICE activity is reported in the {self.bot._locale_area}.\n"
+                f"This channel is now subscribed to ICE activity alerts "
+                f"for **{city_key.title()}**{filter_msg}.\n\n"
                 f"Use `/ice unsubscribe` to stop receiving alerts.",
                 ephemeral=False,
             )
             logger.info(
-                "Channel subscribed: %s in %s (by user %d)",
+                "Channel subscribed: %s in %s for city %s (by user %d)",
                 channel.name,
                 interaction.guild.name if interaction.guild else "DM",
+                city_key,
                 interaction.user.id,
             )
         else:
             await interaction.response.send_message(
-                "ℹ️ This channel is already subscribed to alerts.\n"
-                "Use `/ice status` to view subscription details.",
+                "This channel is already subscribed to alerts.\n"
+                "Use `/ice unsubscribe` first, then re-subscribe with a different city.",
                 ephemeral=True,
             )
+
+    @subscribe.autocomplete("city")
+    async def city_autocomplete(
+        self, interaction: discord.Interaction, current: str
+    ) -> list[app_commands.Choice[str]]:
+        """Provide autocomplete choices for the city parameter."""
+        return [
+            app_commands.Choice(name=c.title(), value=c)
+            for c in self.bot.available_cities
+            if current.lower() in c.lower()
+        ][:25]
 
     @app_commands.command(name="unsubscribe", description="Unsubscribe this channel from ICE alerts")
     @app_commands.checks.has_permissions(manage_channels=True)
@@ -367,16 +407,18 @@ class ICECommands(commands.Cog):
 
         if config:
             subscribed_at = config.get("subscribed_at", "Unknown")
-            location_filter = config.get("location_filter", "All locations")
+            city = config.get("city", "All cities")
+            location_filter = config.get("location_filter", "")
             alert_count = config.get("alert_count", 0)
             last_alert = config.get("last_alert", "Never")
 
             embed = discord.Embed(
-                title="📊 Subscription Status",
+                title="Subscription Status",
                 color=discord.Color.green(),
             )
-            embed.add_field(name="Status", value="✅ Subscribed", inline=True)
-            embed.add_field(name="Location Filter", value=location_filter or "All", inline=True)
+            embed.add_field(name="Status", value="Subscribed", inline=True)
+            embed.add_field(name="City", value=city.title() if city else "All cities", inline=True)
+            embed.add_field(name="Neighborhood Filter", value=location_filter or "All", inline=True)
             embed.add_field(name="Alerts Received", value=str(alert_count), inline=True)
             embed.add_field(name="Subscribed Since", value=subscribed_at[:10], inline=True)
             embed.add_field(name="Last Alert", value=last_alert[:10] if last_alert != "Never" else "Never", inline=True)
@@ -384,19 +426,38 @@ class ICECommands(commands.Cog):
             await interaction.response.send_message(embed=embed, ephemeral=True)
         else:
             await interaction.response.send_message(
-                "❌ This channel is not subscribed to ICE alerts.\n"
-                "Use `/ice subscribe` to start receiving alerts.",
+                "This channel is not subscribed to ICE alerts.\n"
+                "Use `/ice subscribe <city>` to start receiving alerts.",
                 ephemeral=True,
             )
+
+    @app_commands.command(name="cities", description="List available cities for ICE alerts")
+    async def cities(self, interaction: discord.Interaction):
+        """List all available cities."""
+        if not self.bot.available_cities:
+            await interaction.response.send_message(
+                "No cities are currently configured.", ephemeral=True
+            )
+            return
+
+        cities_list = "\n".join(f"- {c.title()}" for c in sorted(self.bot.available_cities))
+        await interaction.response.send_message(
+            f"**Available cities:**\n{cities_list}\n\n"
+            f"Use `/ice subscribe <city>` to subscribe this channel.",
+            ephemeral=True,
+        )
 
     @app_commands.command(name="help", description="Show help for ICE Alert Bot")
     async def help(self, interaction: discord.Interaction):
         """Show help message."""
+        cities_list = ", ".join(c.title() for c in sorted(self.bot.available_cities))
+
         embed = discord.Embed(
-            title=f"🚨 {self.bot._locale_name} ICE Activity Monitor",
+            title="ICE Activity Monitor",
             description=(
                 "This bot monitors multiple sources for ICE enforcement activity "
-                f"in the {self.bot._locale_area} and sends alerts to subscribed channels."
+                "and sends alerts to subscribed channels.\n\n"
+                f"**Available cities:** {cities_list}"
             ),
             color=discord.Color.blue(),
         )
@@ -404,9 +465,10 @@ class ICECommands(commands.Cog):
         embed.add_field(
             name="Commands",
             value=(
-                "`/ice subscribe [location]` - Subscribe this channel to alerts\n"
+                "`/ice subscribe <city> [location]` - Subscribe this channel to alerts\n"
                 "`/ice unsubscribe` - Unsubscribe this channel\n"
                 "`/ice status` - View subscription status\n"
+                "`/ice cities` - List available cities\n"
                 "`/ice help` - Show this help message"
             ),
             inline=False,
@@ -415,11 +477,11 @@ class ICECommands(commands.Cog):
         embed.add_field(
             name="Data Sources",
             value=(
-                "• **Iceout.org** - Community reports\n"
-                "• **StopICE.net** - Alert network\n"
-                "• **Bluesky** - Social media\n"
-                "• **Instagram** - Community orgs\n"
-                "• **Twitter/X** - News & officials"
+                "- **Iceout.org** - Community reports\n"
+                "- **StopICE.net** - Alert network\n"
+                "- **Bluesky** - Social media\n"
+                "- **Instagram** - Community orgs\n"
+                "- **Twitter/X** - News & officials"
             ),
             inline=False,
         )
@@ -436,6 +498,7 @@ class ICECommands(commands.Cog):
 
     @subscribe.error
     @unsubscribe.error
+    @cities.error
     async def permission_error(self, interaction: discord.Interaction, error):
         """Handle permission errors."""
         if isinstance(error, app_commands.MissingPermissions):
@@ -465,11 +528,11 @@ def _set_bot_instance(bot: ICEAlertBot) -> None:
     logger.info("Bot instance registered for alert broadcasting")
 
 
-async def init_bot(token: str, *, locale_name: str = "Minneapolis", locale_area: str = "Minneapolis area") -> ICEAlertBot:
+async def init_bot(token: str, *, available_cities: list[str] | None = None) -> ICEAlertBot:
     """Initialize and return the bot instance."""
     global _bot_instance
     if _bot_instance is None:
-        _bot_instance = ICEAlertBot(token, locale_name=locale_name, locale_area=locale_area)
+        _bot_instance = ICEAlertBot(token, available_cities=available_cities)
     return _bot_instance
 
 
