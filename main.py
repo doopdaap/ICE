@@ -432,6 +432,10 @@ class ICEMonitor:
                 if hasattr(collector, "cleanup"):
                     await collector.cleanup()
 
+            # Shut down the shared browser pool (single Chromium process)
+            from collectors.browser_pool import BrowserPool
+            await BrowserPool.shared().shutdown()
+
             await self.db.close()
             logger.info("Shutdown complete.")
 
