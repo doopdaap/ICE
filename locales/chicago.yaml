@@ -1,0 +1,221 @@
+# ============================================================
+# Chicago / Chicagoland — Locale Configuration
+# ============================================================
+# ICE activity monitoring for the Chicago metropolitan area.
+# HSI Chicago field office covers Northern Illinois / Indiana.
+
+name: Chicago
+display_name: "Chicago/Chicagoland"
+timezone: America/Chicago
+
+# ── Geographic center & radius ────────────────────────────────
+center:
+  lat: 41.8781
+  lon: -87.6298
+radius_km: 55.0
+
+# ── Fallback location strings ────────────────────────────────
+fallback_location: "Chicago area"
+fallback_location_unspecified: "Chicago (unspecified)"
+
+# ── Geodata files (relative to project root) ─────────────────
+neighborhoods_file: ""
+landmarks_file: ""
+
+# ── Geographic keywords ──────────────────────────────────────
+geo_keywords:
+  # Core city
+  - Chicago
+  - Chicagoland
+  # Neighborhoods — South Side
+  - Pilsen
+  - Back of the Yards
+  - Brighton Park
+  - Little Village
+  - Gage Park
+  - Chicago Lawn
+  - West Lawn
+  - West Elsdon
+  - Archer Heights
+  - McKinley Park
+  - Bridgeport
+  - South Chicago
+  - South Deering
+  - Hegewisch
+  - East Side
+  - South Shore
+  - Woodlawn
+  - Englewood
+  - Auburn Gresham
+  # Neighborhoods — West Side
+  - Humboldt Park
+  - Logan Square
+  - Hermosa
+  - Belmont Cragin
+  - Avondale
+  - Austin
+  - West Town
+  - Lawndale
+  - North Lawndale
+  - South Lawndale
+  - Cicero
+  # Neighborhoods — North Side
+  - Albany Park
+  - Rogers Park
+  - Uptown
+  - Edgewater
+  - Lincoln Square
+  - Irving Park
+  - Portage Park
+  - Jefferson Park
+  - Norwood Park
+  - Sauganash
+  - West Ridge
+  # Downtown / Near
+  - Loop
+  - Near West Side
+  - Near South Side
+  - Near North Side
+  - West Loop
+  - South Loop
+  - Streeterville
+  - River North
+  - Gold Coast
+  # Suburbs — South
+  - Cicero
+  - Berwyn
+  - Oak Park
+  - Melrose Park
+  - Maywood
+  - Bellwood
+  - Broadview
+  - Stone Park
+  # Suburbs — North
+  - Evanston
+  - Skokie
+  - Niles
+  - Des Plaines
+  - Park Ridge
+  - Lincolnwood
+  - Morton Grove
+  # Suburbs — West
+  - Aurora
+  - Elgin
+  - Naperville
+  - Joliet
+  - Waukegan
+  - Palatine
+  - Arlington Heights
+  - Schaumburg
+  - Hoffman Estates
+  - Addison
+  - Bensenville
+  - Wood Dale
+  - Hanover Park
+  - Streamwood
+  - Carol Stream
+  - West Chicago
+  - Wheaton
+  # Suburbs — South
+  - Harvey
+  - Dolton
+  - Calumet City
+  - South Holland
+  - Markham
+  - Blue Island
+  - Chicago Heights
+  - Lansing
+  # Indiana fringe
+  - Gary
+  - Hammond
+  - East Chicago
+  # Counties
+  - Cook County
+  - DuPage County
+  - Kane County
+  - Will County
+  - Lake County
+  - McHenry County
+  # Regional terms
+  - Chicagoland
+  - Northern Illinois
+  - NW Indiana
+
+geo_city_names:
+  - Chicago
+  - Cicero
+  - Berwyn
+  - Oak Park
+  - Melrose Park
+  - Evanston
+  - Skokie
+  - Des Plaines
+  - Aurora
+  - Elgin
+  - Naperville
+  - Joliet
+  - Waukegan
+  - Schaumburg
+  - Arlington Heights
+  - Gary
+  - Hammond
+  - East Chicago
+  - Palatine
+  - Addison
+  - Bensenville
+  - Hanover Park
+  - Blue Island
+  - Calumet City
+  - Harvey
+
+# ── RSS feeds ────────────────────────────────────────────────
+rss_feeds:
+  - https://www.chicagotribune.com/feed/
+  - https://chicagoreader.com/feed/
+  - https://blockclubchicago.org/feed/
+  - https://southsideweekly.com/feed/
+  - https://www.chicagoreporter.com/feed/
+
+# ── Subreddits ───────────────────────────────────────────────
+subreddits:
+  - chicago
+  - ChicagoSuburbs
+  - immigration
+
+# ── Bluesky ──────────────────────────────────────────────────
+bluesky:
+  search_queries:
+    - '(ICE OR "immigration enforcement") (Chicago OR Chicagoland OR "Cook County") -spam'
+    - '(ICE raid OR deportation OR detained) (Chicago OR Pilsen OR "Little Village") -spam'
+    - '("ICE agents" OR "federal agents") Chicago -spam'
+  monitored_accounts: []
+  trusted_accounts: []
+
+# ── Twitter/X ────────────────────────────────────────────────
+twitter:
+  search_queries:
+    - '(ICE OR "immigration enforcement") (Chicago OR Chicagoland OR "Cook County") -is:retweet'
+    - '(ICE raid OR "ICE agents" OR deportation) (Chicago OR Pilsen OR "Little Village" OR Cicero) -is:retweet'
+    - '("federal agents" OR "unmarked van" OR "ICE sighting") Chicago -is:retweet'
+    - '(detained OR detention OR "immigration arrest") Chicagoland -is:retweet'
+  reporter_accounts: []
+  activist_accounts:
+    - UnitedWeDream
+    - ICIRR_org
+    - ResistDeportChi
+  news_accounts:
+    - BlockClubCHI
+  official_accounts: []
+
+# ── Instagram ────────────────────────────────────────────────
+instagram:
+  monitored_accounts: []
+
+# ── Discord display ──────────────────────────────────────────
+discord:
+  bot_description: "Chicago ICE Activity Monitor"
+  footer_text: "Chicago ICE Monitor | Stay safe, know your rights"
+  subscribe_message: "ICE activity is reported in the Chicago area"
+  help_description: >-
+    Monitors community platforms, social media, and local news for ICE
+    enforcement activity in the Chicago / Chicagoland metro area.

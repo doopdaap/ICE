@@ -117,15 +117,13 @@ class IceoutCollector(BaseCollector):
         self._intercepted_data: list[bytes] = []
         self._polls_since_full_auth = 0  # Track polls since last full navigation
         self._polls_since_context_recycle = 0  # Track for memory management
-        # Locale-aware geo filter
+        # Locale-aware geo filter — supports multiple centers for multi-locale
         locale = self.config.locale
-        self._center_lat = locale.center_lat
-        self._center_lon = locale.center_lon
-        self._radius_km = locale.radius_km
+        self._centers = locale.centers
         self._location_keywords = {kw.lower() for kw in locale.geo_city_names}
 
     def _is_locale_area(self, report: dict) -> bool:
-        """Check if an Iceout report is within the configured locale radius."""
+        """Check if an Iceout report is within any configured locale radius."""
         loc_str = report.get("location")
         if loc_str:
             try:
@@ -136,16 +134,16 @@ class IceoutCollector(BaseCollector):
                 coords = loc.get("coordinates", [])
                 if len(coords) >= 2:
                     lon, lat = coords[0], coords[1]
-                    dist = _haversine_km(lat, lon, self._center_lat, self._center_lon)
-                    if dist <= self._radius_km:
-                        return True
-                    else:
-                        desc = report.get("location_description", "unknown")
-                        logger.debug(
-                            "[iceout] Rejecting report %.1f km from locale center: %s",
-                            dist, desc[:50]
-                        )
-                        return False
+                    for c_lat, c_lon, c_radius in self._centers:
+                        dist = _haversine_km(lat, lon, c_lat, c_lon)
+                        if dist <= c_radius:
+                            return True
+                    desc = report.get("location_description", "unknown")
+                    logger.debug(
+                        "[iceout] Rejecting report outside all locale centers: %s",
+                        desc[:50],
+                    )
+                    return False
             except (json.JSONDecodeError, TypeError, ValueError):
                 pass
 

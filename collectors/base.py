@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from abc import ABC, abstractmethod
+from datetime import datetime, timedelta, timezone
 
 from config import Config
 from storage.models import RawReport
@@ -70,12 +71,27 @@ class BaseCollector(ABC):
                 backoff = 1
                 consecutive_failures = 0
 
-                for report in reports:
+                # Pre-filter stale reports so they never hit the queue
+                now = datetime.now(timezone.utc)
+                is_trusted = self.name in ("iceout", "stopice")
+                max_age = timedelta(hours=6) if is_trusted else timedelta(
+                    seconds=self.config.report_max_age_seconds
+                )
+                fresh = [r for r in reports if (now - r.timestamp) <= max_age]
+                stale_count = len(reports) - len(fresh)
+
+                for report in fresh:
                     await self.report_queue.put(report)
 
-                if reports:
+                if fresh:
+                    msg = "[%s] Collected %d new reports"
+                    if stale_count:
+                        msg += f" (skipped {stale_count} stale)"
+                    logger.info(msg, self.name, len(fresh))
+                elif stale_count:
                     logger.info(
-                        "[%s] Collected %d new reports", self.name, len(reports)
+                        "[%s] Cycle %d complete, no fresh reports (%d stale skipped)",
+                        self.name, cycle_count, stale_count,
                     )
                 else:
                     logger.info("[%s] Cycle %d complete, no new reports", self.name, cycle_count)

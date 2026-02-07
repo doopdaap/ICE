@@ -1,0 +1,195 @@
+# ============================================================
+# Dallas / Fort Worth — Locale Configuration
+# ============================================================
+# ICE activity monitoring for the DFW Metroplex.
+# HSI Dallas field office covers North Texas.
+
+name: Dallas
+display_name: "Dallas/Fort Worth"
+timezone: America/Chicago
+
+# ── Geographic center & radius ────────────────────────────────
+# Centered between Dallas & Fort Worth
+center:
+  lat: 32.7767
+  lon: -96.7970
+radius_km: 65.0
+
+# ── Fallback location strings ────────────────────────────────
+fallback_location: "DFW area"
+fallback_location_unspecified: "Dallas/Fort Worth (unspecified)"
+
+# ── Geodata files (relative to project root) ─────────────────
+neighborhoods_file: ""
+landmarks_file: ""
+
+# ── Geographic keywords ──────────────────────────────────────
+geo_keywords:
+  # Core cities
+  - Dallas
+  - Fort Worth
+  - Arlington
+  - Plano
+  - Irving
+  - Garland
+  - Grand Prairie
+  - McKinney
+  - Frisco
+  - Mesquite
+  - Denton
+  - Carrollton
+  - Richardson
+  - Lewisville
+  - Allen
+  - Flower Mound
+  - Mansfield
+  - Euless
+  - Bedford
+  - Hurst
+  - Grapevine
+  - Coppell
+  - Farmers Branch
+  - Addison
+  - Duncanville
+  - DeSoto
+  - Lancaster
+  - Cedar Hill
+  - Waxahachie
+  - Wylie
+  - Sachse
+  - Rowlett
+  - Rockwall
+  - The Colony
+  - Little Elm
+  - Prosper
+  - Celina
+  - Anna
+  - Sherman
+  # Counties
+  - Dallas County
+  - Tarrant County
+  - Collin County
+  - Denton County
+  - Rockwall County
+  - Ellis County
+  - Kaufman County
+  - Johnson County
+  # Neighborhoods / areas
+  - Oak Cliff
+  - Pleasant Grove
+  - Vickery Meadow
+  - East Dallas
+  - West Dallas
+  - Oak Lawn
+  - Deep Ellum
+  - South Dallas
+  - North Dallas
+  - Las Colinas
+  - Buckner Terrace
+  - Casa View
+  - Lake Highlands
+  - Lakewood
+  - Lower Greenville
+  - Uptown Dallas
+  - Downtown Dallas
+  - Design District
+  - Bishop Arts
+  - Jefferson Boulevard
+  - Harry Hines
+  - Stemmons Corridor
+  - Bachman Lake
+  - Walnut Hill
+  - Northpark
+  - Preston Hollow
+  - University Park
+  - Highland Park
+  # Fort Worth neighborhoods
+  - Near Southside
+  - Northside Fort Worth
+  - Hemphill
+  - Polytechnic
+  - Stop Six
+  - Como
+  - Diamond Hill
+  # DFW landmarks & terms
+  - DFW
+  - Metroplex
+  - North Texas
+
+geo_city_names:
+  - Dallas
+  - Fort Worth
+  - Arlington
+  - Plano
+  - Irving
+  - Garland
+  - Grand Prairie
+  - McKinney
+  - Frisco
+  - Mesquite
+  - Denton
+  - Carrollton
+  - Richardson
+  - Lewisville
+  - Allen
+  - Flower Mound
+  - Mansfield
+  - Euless
+  - Bedford
+  - Hurst
+  - Grapevine
+  - Farmers Branch
+  - DeSoto
+  - Lancaster
+  - Cedar Hill
+  - Waxahachie
+  - Rowlett
+  - Rockwall
+
+# ── RSS feeds ────────────────────────────────────────────────
+rss_feeds:
+  - https://www.wfaa.com/feeds/syndication/rss/news
+  - https://dallasvoice.com/feed/
+
+# ── Subreddits ───────────────────────────────────────────────
+subreddits:
+  - Dallas
+  - fortworth
+  - texas
+  - immigration
+
+# ── Bluesky ──────────────────────────────────────────────────
+bluesky:
+  search_queries:
+    - '(ICE OR "immigration enforcement") (Dallas OR "Fort Worth" OR DFW) -spam'
+    - '(ICE raid OR deportation OR detained) "North Texas" -spam'
+    - '("ICE agents" OR "federal agents") (Dallas OR Irving OR Garland) -spam'
+  monitored_accounts: []
+  trusted_accounts: []
+
+# ── Twitter/X ────────────────────────────────────────────────
+twitter:
+  search_queries:
+    - '(ICE OR "immigration enforcement") (Dallas OR "Fort Worth" OR DFW) -is:retweet'
+    - '(ICE raid OR "ICE agents" OR deportation) "North Texas" -is:retweet'
+    - '("federal agents" OR "unmarked van" OR "ICE sighting") Dallas -is:retweet'
+    - '(detained OR detention OR "immigration arrest") DFW -is:retweet'
+  reporter_accounts: []
+  activist_accounts:
+    - UnitedWeDream
+    - RAABORTNF
+  news_accounts: []
+  official_accounts: []
+
+# ── Instagram ────────────────────────────────────────────────
+instagram:
+  monitored_accounts: []
+
+# ── Discord display ──────────────────────────────────────────
+discord:
+  bot_description: "Dallas/Fort Worth ICE Activity Monitor"
+  footer_text: "DFW ICE Monitor | Stay safe, know your rights"
+  subscribe_message: "ICE activity is reported in the DFW area"
+  help_description: >-
+    Monitors community platforms, social media, and local news for ICE
+    enforcement activity in the Dallas/Fort Worth Metroplex.

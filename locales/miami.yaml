@@ -1,0 +1,184 @@
+# ============================================================
+# Miami / South Florida — Locale Configuration
+# ============================================================
+# ICE activity monitoring for the Miami metro area.
+# HSI Miami field office covers South Florida.
+
+name: Miami
+display_name: "Miami/South Florida"
+timezone: America/New_York
+
+# ── Geographic center & radius ────────────────────────────────
+center:
+  lat: 25.7617
+  lon: -80.1918
+radius_km: 60.0
+
+# ── Fallback location strings ────────────────────────────────
+fallback_location: "Miami area"
+fallback_location_unspecified: "Miami (unspecified)"
+
+# ── Geodata files (relative to project root) ─────────────────
+neighborhoods_file: ""
+landmarks_file: ""
+
+# ── Geographic keywords ──────────────────────────────────────
+geo_keywords:
+  # Core cities
+  - Miami
+  - Miami Beach
+  - Hialeah
+  - Miami Gardens
+  - Homestead
+  - North Miami
+  - North Miami Beach
+  - Miami Lakes
+  - Miami Springs
+  - Coral Gables
+  - Doral
+  - Sweetwater
+  - Kendall
+  - Opa-locka
+  - Florida City
+  - South Miami
+  - Key Biscayne
+  - Aventura
+  - Sunny Isles Beach
+  - Surfside
+  - Bal Harbour
+  - Cutler Bay
+  - Palmetto Bay
+  - Pinecrest
+  - Medley
+  - Virginia Gardens
+  # Broward County
+  - Fort Lauderdale
+  - Hollywood
+  - Pembroke Pines
+  - Miramar
+  - Pompano Beach
+  - Davie
+  - Plantation
+  - Sunrise
+  - Weston
+  - Deerfield Beach
+  - Lauderhill
+  - Tamarac
+  - Margate
+  - Coconut Creek
+  - Hallandale Beach
+  # Palm Beach County fringe
+  - Boca Raton
+  - Boynton Beach
+  - Delray Beach
+  # Counties
+  - Miami-Dade County
+  - Miami-Dade
+  - Broward County
+  - Palm Beach County
+  # Neighborhoods / areas
+  - Little Havana
+  - Little Haiti
+  - Overtown
+  - Liberty City
+  - Wynwood
+  - Allapattah
+  - Flagami
+  - Westchester
+  - West Miami
+  - Brownsville
+  - El Portal
+  - Biscayne Park
+  - Coconut Grove
+  - Edgewater
+  - Midtown Miami
+  - Downtown Miami
+  - Brickell
+  - Design District
+  - Upper East Side
+  - Buena Vista
+  - Model City
+  - Opa-locka
+  - Carol City
+  - Naranja
+  - Leisure City
+  - Goulds
+  - Princeton
+  - Redland
+  - Krome
+  # Regional terms
+  - South Florida
+  - SoFla
+  - 305
+
+geo_city_names:
+  - Miami
+  - Miami Beach
+  - Hialeah
+  - Miami Gardens
+  - Homestead
+  - North Miami
+  - Coral Gables
+  - Doral
+  - Sweetwater
+  - Kendall
+  - Opa-locka
+  - Aventura
+  - Fort Lauderdale
+  - Hollywood
+  - Pembroke Pines
+  - Miramar
+  - Pompano Beach
+  - Plantation
+  - Weston
+  - Hallandale Beach
+  - Boca Raton
+  - Boynton Beach
+  - Delray Beach
+
+# ── RSS feeds ────────────────────────────────────────────────
+rss_feeds:
+  - https://www.nbcmiami.com/news/local/feed/
+  - https://therealdeal.com/miami/feed/
+
+# ── Subreddits ───────────────────────────────────────────────
+subreddits:
+  - Miami
+  - florida
+  - immigration
+
+# ── Bluesky ──────────────────────────────────────────────────
+bluesky:
+  search_queries:
+    - '(ICE OR "immigration enforcement") (Miami OR Hialeah OR "South Florida") -spam'
+    - '(ICE raid OR deportation OR detained) (Miami-Dade OR Broward) -spam'
+    - '("ICE agents" OR "federal agents") Miami -spam'
+  monitored_accounts: []
+  trusted_accounts: []
+
+# ── Twitter/X ────────────────────────────────────────────────
+twitter:
+  search_queries:
+    - '(ICE OR "immigration enforcement") (Miami OR Hialeah OR Homestead OR "South Florida") -is:retweet'
+    - '(ICE raid OR "ICE agents" OR deportation) Miami-Dade -is:retweet'
+    - '("federal agents" OR "unmarked van" OR "ICE sighting") Miami -is:retweet'
+    - '(detained OR detention OR "immigration arrest") "South Florida" -is:retweet'
+  reporter_accounts: []
+  activist_accounts:
+    - UnitedWeDream
+    - FLImmigrant
+  news_accounts: []
+  official_accounts: []
+
+# ── Instagram ────────────────────────────────────────────────
+instagram:
+  monitored_accounts: []
+
+# ── Discord display ──────────────────────────────────────────
+discord:
+  bot_description: "Miami/South Florida ICE Activity Monitor"
+  footer_text: "Miami ICE Monitor | Stay safe, know your rights"
+  subscribe_message: "ICE activity is reported in the Miami area"
+  help_description: >-
+    Monitors community platforms, social media, and local news for ICE
+    enforcement activity in the Miami / South Florida metro area.

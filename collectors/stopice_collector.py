@@ -104,18 +104,19 @@ class StopICECollector(BaseCollector):
         self._session: aiohttp.ClientSession | None = None
         self._consecutive_failures = 0
         self._last_warning_time: datetime | None = None
-        # Locale-aware geo filter
+        # Locale-aware geo filter — supports multiple centers for multi-locale
         locale = self.config.locale
-        self._center_lat = locale.center_lat
-        self._center_lon = locale.center_lon
-        self._radius_km = locale.radius_km
+        self._centers = locale.centers
         self._location_keywords = {kw.lower() for kw in locale.geo_city_names}
 
     def _is_locale_area_coords(self, lat: float, lon: float) -> bool:
-        """Check if coordinates are within the configured locale radius."""
+        """Check if coordinates are within any configured locale radius."""
         try:
-            dist = _haversine_km(lat, lon, self._center_lat, self._center_lon)
-            return dist <= self._radius_km
+            for c_lat, c_lon, c_radius in self._centers:
+                dist = _haversine_km(lat, lon, c_lat, c_lon)
+                if dist <= c_radius:
+                    return True
+            return False
         except (ValueError, TypeError):
             return False
 

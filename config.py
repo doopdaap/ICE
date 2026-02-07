@@ -2,7 +2,7 @@ import os
 from dataclasses import dataclass, field
 from dotenv import load_dotenv
 
-from processing.locale import Locale, load_locale
+from processing.locale import Locale, load_locale, load_locales
 
 
 load_dotenv()
@@ -92,7 +92,7 @@ class Config:
 
 
 def load_config() -> Config:
-    locale = load_locale()  # uses LOCALE env var, defaults to "minneapolis"
+    locale = load_locales()  # supports comma-separated LOCALE env var
 
     reddit_subs_raw = os.getenv("REDDIT_SUBREDDITS", "")
     reddit_subs = (

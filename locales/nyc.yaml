@@ -1,0 +1,220 @@
+# ============================================================
+# New York City — Locale Configuration
+# ============================================================
+# ICE activity monitoring for NYC and the tri-state metro area.
+# HSI New York field office is one of the largest in the country.
+
+name: NYC
+display_name: "New York City"
+timezone: America/New_York
+
+# ── Geographic center & radius ────────────────────────────────
+# Centered on Midtown Manhattan; 50 km covers all 5 boroughs + inner suburbs
+center:
+  lat: 40.7128
+  lon: -74.0060
+radius_km: 50.0
+
+# ── Fallback location strings ────────────────────────────────
+fallback_location: "NYC area"
+fallback_location_unspecified: "New York City (unspecified)"
+
+# ── Geodata files (relative to project root) ─────────────────
+neighborhoods_file: ""
+landmarks_file: ""
+
+# ── Geographic keywords ──────────────────────────────────────
+geo_keywords:
+  # Boroughs
+  - Manhattan
+  - Brooklyn
+  - Queens
+  - Bronx
+  - Staten Island
+  - New York City
+  - New York
+  - NYC
+  # Manhattan neighborhoods
+  - Harlem
+  - East Harlem
+  - Washington Heights
+  - Inwood
+  - Upper East Side
+  - Upper West Side
+  - Midtown
+  - Chelsea
+  - Hell's Kitchen
+  - Lower East Side
+  - Chinatown
+  - SoHo
+  - Tribeca
+  - Financial District
+  - East Village
+  - West Village
+  - Greenwich Village
+  - Murray Hill
+  - Gramercy
+  - Alphabet City
+  # Brooklyn neighborhoods
+  - Sunset Park
+  - Bay Ridge
+  - Bensonhurst
+  - Borough Park
+  - Bushwick
+  - Williamsburg
+  - Bed-Stuy
+  - Bedford-Stuyvesant
+  - Crown Heights
+  - Flatbush
+  - East Flatbush
+  - East New York
+  - Brownsville
+  - Canarsie
+  - Brighton Beach
+  - Coney Island
+  - Gravesend
+  - Midwood
+  - Sheepshead Bay
+  - Park Slope
+  - Red Hook
+  - DUMBO
+  # Queens neighborhoods
+  - Jackson Heights
+  - Elmhurst
+  - Corona
+  - Flushing
+  - Jamaica
+  - Woodside
+  - Astoria
+  - Long Island City
+  - Sunnyside
+  - Ridgewood
+  - Ozone Park
+  - Richmond Hill
+  - South Ozone Park
+  - Far Rockaway
+  - Rockaway
+  - College Point
+  - Bayside
+  - Forest Hills
+  - Rego Park
+  - Kew Gardens
+  - Fresh Meadows
+  # Bronx neighborhoods
+  - South Bronx
+  - Mott Haven
+  - Hunts Point
+  - Tremont
+  - Fordham
+  - Kingsbridge
+  - Riverdale
+  - Parkchester
+  - Morris Park
+  - Throggs Neck
+  - Soundview
+  - Norwood
+  - Belmont
+  - Highbridge
+  - Concourse
+  # Staten Island
+  - St. George
+  - Tompkinsville
+  - Port Richmond
+  - New Dorp
+  # Inner suburbs
+  - Yonkers
+  - Mount Vernon
+  - New Rochelle
+  - Hempstead
+  - Newark
+  - Elizabeth
+  - Jersey City
+  - Paterson
+  - Passaic
+  # Counties
+  - New York County
+  - Kings County
+  - Queens County
+  - Bronx County
+  - Richmond County
+  - Westchester County
+  - Nassau County
+  - Hudson County
+  - Essex County
+  # Regional terms
+  - tri-state
+  - metro area
+
+geo_city_names:
+  - New York
+  - Manhattan
+  - Brooklyn
+  - Queens
+  - Bronx
+  - Staten Island
+  - Yonkers
+  - Mount Vernon
+  - New Rochelle
+  - Hempstead
+  - Newark
+  - Elizabeth
+  - Jersey City
+  - Paterson
+  - Passaic
+  - Flushing
+  - Jamaica
+  - Jackson Heights
+  - Elmhurst
+  - Corona
+  - Sunset Park
+
+# ── RSS feeds ────────────────────────────────────────────────
+rss_feeds:
+  - https://gothamist.com/feed
+  - https://www.thecity.nyc/feed
+  - https://documentedny.com/feed/
+
+# ── Subreddits ───────────────────────────────────────────────
+subreddits:
+  - nyc
+  - newyorkcity
+  - immigration
+
+# ── Bluesky ──────────────────────────────────────────────────
+bluesky:
+  search_queries:
+    - '(ICE OR "immigration enforcement") (NYC OR "New York" OR Manhattan OR Brooklyn OR Queens OR Bronx) -spam'
+    - '(ICE raid OR deportation OR detained) (NYC OR "New York City") -spam'
+    - '("ICE agents" OR "federal agents") ("Jackson Heights" OR "Sunset Park" OR Harlem OR Bronx) -spam'
+  monitored_accounts: []
+  trusted_accounts: []
+
+# ── Twitter/X ────────────────────────────────────────────────
+twitter:
+  search_queries:
+    - '(ICE OR "immigration enforcement") (NYC OR "New York" OR Manhattan OR Brooklyn OR Queens OR Bronx) -is:retweet'
+    - '(ICE raid OR "ICE agents" OR deportation) "New York City" -is:retweet'
+    - '("federal agents" OR "unmarked van" OR "ICE sighting") NYC -is:retweet'
+    - '(detained OR detention OR "immigration arrest") (NYC OR "New York") -is:retweet'
+  reporter_accounts: []
+  activist_accounts:
+    - UnitedWeDream
+    - MakeTheRoadNY
+    - NYImmCoalition
+  news_accounts:
+    - Gothamist
+    - DocumentedNY
+  official_accounts: []
+
+# ── Instagram ────────────────────────────────────────────────
+instagram:
+  monitored_accounts: []
+
+# ── Discord display ──────────────────────────────────────────
+discord:
+  bot_description: "NYC ICE Activity Monitor"
+  footer_text: "NYC ICE Monitor | Stay safe, know your rights"
+  subscribe_message: "ICE activity is reported in the New York City area"
+  help_description: >-
+    Monitors community platforms, social media, and local news for ICE
+    enforcement activity in New York City and the surrounding metro area.

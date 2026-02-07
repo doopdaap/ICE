@@ -113,8 +113,8 @@ geo_city_names:
 
 # ── RSS feeds ────────────────────────────────────────────────
 rss_feeds:
-  - https://www.kansascity.com/latest-news/index.rss
-  - https://www.kcur.org/feed
+  - https://flatlandkc.org/feed/
+  - https://www.kmbc.com/topstories-rss
 
 # ── Reddit ───────────────────────────────────────────────────
 subreddits:

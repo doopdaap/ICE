@@ -165,7 +165,7 @@ class ICEMonitor:
             max_age = timedelta(seconds=self.config.report_max_age_seconds)
 
         if (now - report.timestamp) > max_age:
-            logger.info(
+            logger.debug(
                 "Skipping stale report [%s] from %s (age > %s)",
                 report.source_type,
                 report.timestamp.isoformat(),
@@ -417,7 +417,7 @@ class ICEMonitor:
         finally:
             logger.info("Shutting down...")
 
-            # Stop collectors
+            # Stop collectors (sets is_running = False so loops exit)
             for collector in self.collectors:
                 collector.stop()
 
@@ -427,14 +427,39 @@ class ICEMonitor:
 
             await asyncio.gather(*tasks, return_exceptions=True)
 
-            # Cleanup Twitter session if active
+            # Close collector browser contexts first (before killing the browser)
             for collector in self.collectors:
                 if hasattr(collector, "cleanup"):
-                    await collector.cleanup()
+                    try:
+                        await collector.cleanup()
+                    except Exception:
+                        pass
+
+            # Brief pause so Playwright futures settle before we kill the process
+            await asyncio.sleep(0.5)
+
+            # Suppress Playwright TargetClosedError noise during browser teardown
+            loop = asyncio.get_running_loop()
+            _orig_handler = loop.get_exception_handler()
+
+            def _suppress_target_closed(loop, context):
+                exc = context.get("exception")
+                if exc and "TargetClosedError" in type(exc).__name__:
+                    return  # swallow silently
+                if _orig_handler:
+                    _orig_handler(loop, context)
+                else:
+                    loop.default_exception_handler(context)
+
+            loop.set_exception_handler(_suppress_target_closed)
 
             # Shut down the shared browser pool (single Chromium process)
             from collectors.browser_pool import BrowserPool
             await BrowserPool.shared().shutdown()
+
+            # Restore default handler after teardown settles
+            await asyncio.sleep(0.5)
+            loop.set_exception_handler(_orig_handler)
 
             await self.db.close()
             logger.info("Shutdown complete.")

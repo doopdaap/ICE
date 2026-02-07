@@ -214,7 +214,8 @@ geo_city_names:
 # ── RSS feeds (local news outlets) ───────────────────────────
 rss_feeds:
   - https://www.startribune.com/local/index.rss2
-  - https://www.mprnews.org/feed/minnesota
+  - https://minnesotareformer.com/feed/
+  - https://sahanjournal.com/feed/
   - https://www.kare11.com/feeds/syndication/rss/news
 
 # ── Reddit subreddits ────────────────────────────────────────

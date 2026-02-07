@@ -410,6 +410,9 @@ class InstagramCollector(BaseCollector):
 
     async def collect(self) -> list[RawReport]:
         """Collect posts from monitored Instagram accounts."""
+        if not self._monitored_accounts:
+            return []
+
         if not await self._ensure_browser():
             return []
 
