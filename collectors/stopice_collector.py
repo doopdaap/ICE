@@ -25,23 +25,8 @@ from storage.models import RawReport
 
 logger = logging.getLogger(__name__)
 
-# Minneapolis metro area filter
-MPLS_CENTER_LAT = 44.9778
-MPLS_CENTER_LON = -93.2650
-MAX_DISTANCE_KM = 50.0  # ~31 miles
-
 # API endpoint for map data
 STOPICE_API_URL = "https://stopice.net/login/"
-
-# Text-based location filter
-MN_LOCATION_KEYWORDS = {
-    "minneapolis", "mpls", "st paul", "saint paul", "minnesota", "mn",
-    "eden prairie", "bloomington", "brooklyn park", "brooklyn center",
-    "richfield", "golden valley", "st louis park", "crystal",
-    "plymouth", "maple grove", "eagan", "burnsville",
-    "shakopee", "lakeville", "roseville", "woodbury",
-    "hennepin", "ramsey county", "dakota county",
-}
 
 
 def _haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
@@ -57,21 +42,6 @@ def _haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
         * math.sin(dlon / 2) ** 2
     )
     return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
-
-
-def _is_mpls_area_coords(lat: float, lon: float) -> bool:
-    """Check if coordinates are in Minneapolis metro area."""
-    try:
-        dist = _haversine_km(lat, lon, MPLS_CENTER_LAT, MPLS_CENTER_LON)
-        return dist <= MAX_DISTANCE_KM
-    except (ValueError, TypeError):
-        return False
-
-
-def _is_mpls_area_text(text: str) -> bool:
-    """Check if text contains Minneapolis area references."""
-    text_lower = text.lower()
-    return any(kw in text_lower for kw in MN_LOCATION_KEYWORDS)
 
 
 class StopICEDataParser(HTMLParser):
@@ -134,6 +104,25 @@ class StopICECollector(BaseCollector):
         self._session: aiohttp.ClientSession | None = None
         self._consecutive_failures = 0
         self._last_warning_time: datetime | None = None
+        # Locale-aware geo filter
+        locale = self.config.locale
+        self._center_lat = locale.center_lat
+        self._center_lon = locale.center_lon
+        self._radius_km = locale.radius_km
+        self._location_keywords = {kw.lower() for kw in locale.geo_city_names}
+
+    def _is_locale_area_coords(self, lat: float, lon: float) -> bool:
+        """Check if coordinates are within the configured locale radius."""
+        try:
+            dist = _haversine_km(lat, lon, self._center_lat, self._center_lon)
+            return dist <= self._radius_km
+        except (ValueError, TypeError):
+            return False
+
+    def _is_locale_area_text(self, text: str) -> bool:
+        """Check if text contains locale area references."""
+        text_lower = text.lower()
+        return any(kw in text_lower for kw in self._location_keywords)
 
     async def _ensure_session(self) -> aiohttp.ClientSession:
         if self._session is None or self._session.closed:
@@ -228,7 +217,7 @@ class StopICECollector(BaseCollector):
             self._consecutive_failures = 0
 
         if reports:
-            logger.info("[stopice] Found %d Minneapolis-area reports", len(reports))
+            logger.info("[stopice] Found %d locale-area reports", len(reports))
 
         return reports
 
@@ -251,14 +240,14 @@ class StopICECollector(BaseCollector):
                 location = marker.get("location", "")
                 comments = marker.get("comments", "")
 
-                # Check if in Minneapolis area
-                in_mpls = False
+                # Check if in locale area
+                in_area = False
                 if lat is not None and lon is not None:
-                    in_mpls = _is_mpls_area_coords(lat, lon)
-                if not in_mpls:
-                    in_mpls = _is_mpls_area_text(f"{location} {comments}")
+                    in_area = self._is_locale_area_coords(lat, lon)
+                if not in_area:
+                    in_area = self._is_locale_area_text(f"{location} {comments}")
 
-                if not in_mpls:
+                if not in_area:
                     continue
 
                 # Parse timestamp

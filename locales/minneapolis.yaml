@@ -1,0 +1,310 @@
+# ============================================================
+# Minneapolis / Twin Cities — Locale Configuration
+# ============================================================
+# This file contains ALL location-specific data for monitoring
+# ICE activity in the Minneapolis–Saint Paul metro area.
+#
+# To add a new city, copy this file, rename it (e.g., chicago.yaml),
+# and update every section below. Then set LOCALE=chicago in .env.
+
+name: Minneapolis
+display_name: "Minneapolis/Twin Cities"
+timezone: America/Chicago
+
+# ── Geographic center & radius ────────────────────────────────
+center:
+  lat: 44.9778
+  lon: -93.2650
+radius_km: 50.0
+
+# ── Fallback location strings ────────────────────────────────
+fallback_location: "Minneapolis area"
+fallback_location_unspecified: "Minneapolis (unspecified)"
+
+# ── Geodata files (relative to project root) ─────────────────
+neighborhoods_file: geodata/minneapolis_neighborhoods.json
+landmarks_file: geodata/landmarks.json
+
+# ── Geographic keywords ──────────────────────────────────────
+# Used by text_processor.py for the GEO tier of relevance filtering.
+# A report must match at least one ICE keyword AND one of these.
+geo_keywords:
+  # Metro names
+  - minneapolis
+  - mpls
+  - hennepin
+  - hennepin county
+  - twin cities
+  - st paul
+  - saint paul
+  - ramsey county
+  - minnesota
+  # Neighborhoods
+  - uptown
+  - downtown minneapolis
+  - north minneapolis
+  - south minneapolis
+  - northeast minneapolis
+  - cedar-riverside
+  - cedar riverside
+  - west bank
+  - phillips
+  - powderhorn
+  - whittier
+  - seward
+  - longfellow
+  - nokomis
+  - loring park
+  - elliot park
+  - stevens square
+  - ventura village
+  - midtown
+  - corcoran
+  - standish
+  - ericsson
+  - kingfield
+  - lyndale
+  - tangletown
+  - diamond lake
+  - hale
+  - page
+  - field
+  - regina
+  - northrup
+  - kenny
+  - windom
+  - armatage
+  - lynnhurst
+  - fulton
+  - linden hills
+  - east harriet
+  - west calhoun
+  - east isles
+  - lowry hill
+  - lowry hill east
+  - kenwood
+  - bryn mawr
+  - harrison
+  - hawthorne
+  - near north
+  - willard-hay
+  - jordan
+  - folwell
+  - mckinley
+  - humboldt industrial
+  - sumner-glenwood
+  - prospect park
+  - como
+  - marcy-holmes
+  - nicollet island
+  - st anthony west
+  - st anthony east
+  - waite park
+  - audubon park
+  - holland
+  - logan park
+  - marshall terrace
+  - bottineau
+  - sheridan
+  - columbia park
+  - windom park
+  # Suburbs
+  - bloomington
+  - arden hills
+  - richfield
+  - brooklyn park
+  - brooklyn center
+  - columbia heights
+  - fridley
+  - crystal
+  - golden valley
+  - robbinsdale
+  - st louis park
+  - eden prairie
+  - burnsville
+  - eagan
+  - shakopee
+  - albertville
+  - shoreview
+  - plymouth
+  - maple grove
+  - lakeville
+  - apple valley
+  - roseville
+  - maplewood
+  - woodbury
+  - coon rapids
+  - anoka
+  - champlin
+  - dayton
+  - minnetonka
+  - edina
+  - hopkins
+  - chanhassen
+  - prior lake
+  - savage
+  # Streets / landmarks
+  - lake street
+  - nicollet avenue
+  - hennepin avenue
+  - franklin avenue
+  - central avenue
+  - university avenue
+  - washington avenue
+  - lyndale avenue
+  - bloomington avenue
+  - chicago avenue
+  - portland avenue
+  - cedar avenue
+  - target center
+  - hiawatha avenue
+  - minnehaha
+  - us bank stadium
+  - mall of america
+  - msp airport
+
+# ── Geo-filter city names ────────────────────────────────────
+# Used by collectors (iceout, stopice) to filter reports by
+# location_description. Broader than geo_keywords since these
+# match against structured location data, not free text.
+geo_city_names:
+  - minneapolis
+  - mpls
+  - st paul
+  - saint paul
+  - minnesota
+  - mn
+  - eden prairie
+  - bloomington
+  - brooklyn park
+  - brooklyn center
+  - richfield
+  - golden valley
+  - st louis park
+  - crystal
+  - plymouth
+  - maple grove
+  - eagan
+  - burnsville
+  - shakopee
+  - lakeville
+  - roseville
+  - woodbury
+  - hennepin
+  - ramsey county
+  - dakota county
+  - fridley
+  - columbia heights
+  - robbinsdale
+  - coon rapids
+  - anoka
+  - champlin
+  - dayton
+  - minnetonka
+  - edina
+  - hopkins
+  - chanhassen
+  - prior lake
+  - savage
+  - shoreview
+  - arden hills
+  - apple valley
+  - maplewood
+
+# ── RSS feeds (local news outlets) ───────────────────────────
+rss_feeds:
+  - https://www.startribune.com/local/index.rss2
+  - https://www.mprnews.org/feed/minnesota
+  - https://www.kare11.com/feeds/syndication/rss/news
+
+# ── Reddit subreddits ────────────────────────────────────────
+subreddits:
+  - Minneapolis
+  - minnesota
+  - TwinCities
+  - immigration
+
+# ── Bluesky ──────────────────────────────────────────────────
+bluesky:
+  search_queries:
+    - "ICE Minneapolis"
+    - "ICE Minnesota"
+    - "immigration raid Minneapolis"
+    - "deportation Minnesota"
+    - "ICE agents Minneapolis"
+    - "immigration enforcement Minneapolis"
+  monitored_accounts:
+    - startribune.bsky.social
+    - bringmethenews.bsky.social
+    - sahanjournal.bsky.social
+    - maxnesterak.bsky.social
+    - miracmn.bsky.social
+    - conmijente.bsky.social
+    - defend612.bsky.social
+    - sunrisemvmt.bsky.social
+  trusted_accounts:
+    - startribune.bsky.social
+    - bringmethenews.bsky.social
+    - sahanjournal.bsky.social
+    - maxnesterak.bsky.social
+    - miracmn.bsky.social
+    - defend612.bsky.social
+
+# ── Twitter/X ────────────────────────────────────────────────
+twitter:
+  search_queries:
+    - '(ICE OR "immigration enforcement") (Minneapolis OR Mpls OR "Twin Cities") -is:retweet'
+    - '(ICE raid OR "ICE agents" OR deportation) Minnesota -is:retweet'
+    - '("federal agents" OR "unmarked van" OR "ICE sighting") Minneapolis -is:retweet'
+    - '(ICE OR deportation) (Hennepin OR "Cedar-Riverside" OR "Lake Street") -is:retweet'
+    - '("ice watch" OR "community alert" OR "rapid response") Minnesota ICE -is:retweet'
+    - '(detained OR detention OR "immigration arrest") Minneapolis -is:retweet'
+  reporter_accounts:
+    - maxnesterak
+    - deenafaywinter
+    - MWilliamsonMN
+    - MNReformer
+    - rachstou
+    - Ibrahim_Hirsi
+  activist_accounts:
+    - UnitedWeDream
+    - LORICHALEZE
+    - TCAILAction
+    - miracmn
+    - ConMijente
+    - Abortnf
+    - defend612
+    - the5051
+    - SunriseMVMT
+    - IndivisibleTeam
+    - NickValencia
+  news_accounts:
+    - StarTribune
+    - fox9
+    - MPRnews
+    - kaboremn
+    - BringMeTheNews
+    - SahanJournal
+  official_accounts:
+    - GovTimWalz
+    - MplsMayor
+    - MayorKaohly
+    - AGEllison
+    - IlhanMN
+
+# ── Instagram ────────────────────────────────────────────────
+instagram:
+  monitored_accounts:
+    - sunrisetwincities
+    - indivisible_twincities
+    - mnfreedomfund
+    - isaiah_mn
+
+# ── Discord display ──────────────────────────────────────────
+discord:
+  bot_description: "Minneapolis ICE Activity Monitor"
+  footer_text: "Minneapolis ICE Monitor | Stay safe, know your rights"
+  subscribe_message: "ICE activity is reported in the Minneapolis area"
+  help_description: >-
+    This bot monitors multiple sources for ICE enforcement activity
+    in the Minneapolis/Twin Cities area and sends alerts to subscribed channels.

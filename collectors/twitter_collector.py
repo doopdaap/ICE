@@ -37,76 +37,13 @@ logger = logging.getLogger(__name__)
 # ── Cookie file path ─────────────────────────────────────────────────
 COOKIE_FILE = Path(".twitter_cookies.json")
 
-# ── Search queries ───────────────────────────────────────────────────
-# Rotate through these each cycle. Authenticated search unlocks this.
-SEARCH_QUERIES = [
-    '(ICE OR "immigration enforcement") (Minneapolis OR Mpls OR "Twin Cities") -is:retweet',
-    '(ICE raid OR "ICE agents" OR deportation) Minnesota -is:retweet',
-    '("federal agents" OR "unmarked van" OR "ICE sighting") Minneapolis -is:retweet',
-    '(ICE OR deportation) (Hennepin OR "Cedar-Riverside" OR "Lake Street") -is:retweet',
-    '("ice watch" OR "community alert" OR "rapid response") Minnesota ICE -is:retweet',
-    '(detained OR detention OR "immigration arrest") Minneapolis -is:retweet',
-]
-
-# ── Accounts to monitor ──────────────────────────────────────────────
-# Prioritized for REAL-TIME reporting. Gov enforcement accounts excluded.
-
-JOURNALIST_ACCOUNTS = [
-    "maxnesterak",          # Minnesota Reformer — broke ICE shooting video story
-    "deenafaywinter",       # Reporter covering MN immigration enforcement
-    "MWilliamsonMN",        # Mitchell Williamson, MN journalist
-    "MNReformer",           # Minnesota Reformer (outlet)
-    "rachstou",             # Sahan Journal / MN immigration reporter
-    "Ibrahim_Hirsi",        # Sahan Journal immigration reporter
-]
-
-COMMUNITY_ACCOUNTS = [
-    "UnitedWeDream",        # National immigrant rights — breaks ICE ops fast
-    "LORICHALEZE",          # Twin Cities immigrant rights organizer
-    "TCAILAction",          # MN immigrant advocacy
-    "miracmn",              # Minnesota Immigrant Rights Action Committee - grassroots MN org
-    # ── From GPT Research JSON ──
-    "ConMijente",           # Mijente - Latinx organizing collective, shares ICE abuse news
-    "Abortnf",              # Abort the Supreme Court - intersectional activism, amplifies ICE alerts
-    "defend612",            # Defend612 - Minneapolis rapid-response network (if they have Twitter)
-    "the5051",              # The 50/51 - national protest movement against ICE
-    "SunriseMVMT",          # Sunrise Movement - climate/social justice, supports anti-ICE actions
-    "IndivisibleTeam",      # Indivisible - progressive coalition, organizes against ICE
-    "NickValencia",         # Nick Valencia - journalist covering ICE raids (was CNN, now independent)
-]
-
-NEWS_ACCOUNTS = [
-    "StarTribune",          # Star Tribune (Minneapolis)
-    "fox9",                 # FOX 9 Minneapolis-St Paul
-    "MPRnews",              # Minnesota Public Radio
-    "kaboremn",             # KARE 11 (NBC Minneapolis)
-    "BringMeTheNews",       # MN news aggregator (fast on breaking)
-    "SahanJournal",         # Sahan Journal — immigrant community news
-]
-
-OFFICIAL_ACCOUNTS = [
-    "GovTimWalz",           # Minnesota Governor
-    "MplsMayor",            # Minneapolis Mayor
-    "MayorKaohly",          # St. Paul Mayor Kaohly Her
-    "AGEllison",            # MN Attorney General Keith Ellison
-    "IlhanMN",              # Ilhan Omar — MN congresswoman
-]
-
-# All accounts combined (journalists first = highest priority)
-MONITORED_ACCOUNTS = (
-    JOURNALIST_ACCOUNTS
-    + COMMUNITY_ACCOUNTS
-    + NEWS_ACCOUNTS
-    + OFFICIAL_ACCOUNTS
-)
-
 # File to cache account validation results (stale/nonexistent accounts)
 ACCOUNT_CACHE_FILE = Path(".twitter_account_cache.json")
 
 # Max age for account to be considered active (3 months = ~90 days)
 ACCOUNT_STALE_DAYS = 90
 
-# ── Relevance filtering ─────────────────────────────────────────────
+# ── ICE keyword regex (universal — not locale-specific) ──────────────
 
 ICE_KEYWORDS_RE = re.compile(
     r"\b(?:"
@@ -130,52 +67,6 @@ ICE_KEYWORDS_RE = re.compile(
     r")",
     re.IGNORECASE,
 )
-
-MN_KEYWORDS_RE = re.compile(
-    r"\b(?:"
-    r"minneapolis|mpls|minnesota|hennepin|"
-    r"st\.?\s*paul|saint\s+paul|twin\s+cities|"
-    r"bloomington|eden\s+prairie|brooklyn\s+(?:park|center)|"
-    r"maple\s+grove|richfield|crystal|fridley|"
-    r"burnsville|eagan|lakeville|plymouth|"
-    r"coon\s+rapids|anoka|shakopee|savage|"
-    r"roseville|maplewood|woodbury|columbia\s+heights|"
-    r"golden\s+valley|robbinsdale|st\.?\s*louis\s+park|"
-    r"albertville|litchfield|delano|cottage\s+grove|"
-    r"lake\s+street|cedar[\s-]riverside|uptown|"
-    r"whittier|powderhorn|phillips|seward|longfellow|"
-    r"nokomis|north\s+(?:minneapolis|mpls)|south\s+(?:minneapolis|mpls)"
-    r")",
-    re.IGNORECASE,
-)
-
-MN_FOCUSED_ACCOUNTS = {
-    # Local news
-    "startribune", "fox9", "mprnews", "kaboremn",
-    "bringmethenews", "sahanjournal", "mnreformer",
-    # MN officials
-    "govtimwalz", "mplsmayor", "mayorkaohly",
-    "agellison", "ilhanmn",
-    # MN journalists
-    "maxnesterak", "deenafaywinter", "mwilliamsonmn",
-    "rachstou", "ibrahim_hirsi", "nickvalencia",
-    # MN community orgs
-    "lorichaleze", "tcailaction", "miracmn",
-    "defend612", "sunrisemvmt",
-}
-
-
-def _tweet_is_relevant(text: str, screen_name: str) -> bool:
-    """Check if a tweet is about ICE enforcement in Minnesota."""
-    sn_lower = screen_name.lower()
-
-    has_ice = bool(ICE_KEYWORDS_RE.search(text))
-    has_mn = bool(MN_KEYWORDS_RE.search(text))
-
-    if sn_lower in MN_FOCUSED_ACCOUNTS:
-        return has_ice
-
-    return has_ice and has_mn
 
 
 def _parse_twitter_date(date_str: str) -> datetime | None:
@@ -336,6 +227,28 @@ class TwitterCollector(BaseCollector):
         self._search_queries_per_cycle = 2
         self._active_accounts: list[str] = []  # Validated active accounts
         self._accounts_validated = False
+        # Build locale-aware data
+        locale = self.config.locale
+        self._geo_re = locale.build_geo_regex()
+        self._search_queries = list(locale.twitter_search_queries)
+        self._all_monitored = (
+            list(locale.twitter_reporter_accounts)
+            + list(locale.twitter_activist_accounts)
+            + list(locale.twitter_news_accounts)
+            + list(locale.twitter_official_accounts)
+        )
+        self._focused_accounts = {h.lower() for h in locale.twitter_all_mn_focused}
+
+    def _tweet_is_relevant(self, text: str, screen_name: str) -> bool:
+        """Check if a tweet is about ICE enforcement in the locale area."""
+        sn_lower = screen_name.lower()
+        has_ice = bool(ICE_KEYWORDS_RE.search(text))
+        has_geo = bool(self._geo_re.search(text))
+
+        if sn_lower in self._focused_accounts:
+            return has_ice
+
+        return has_ice and has_geo
 
     @property
     def _has_credentials(self) -> bool:
@@ -922,15 +835,15 @@ class TwitterCollector(BaseCollector):
             return active
 
         # Need to re-validate
-        logger.info("[twitter] Validating %d monitored accounts...", len(MONITORED_ACCOUNTS))
+        logger.info("[twitter] Validating %d monitored accounts...", len(self._all_monitored))
 
         active_accounts = []
         stale_accounts = []
         missing_accounts = []
         account_details = {}
 
-        for i, account in enumerate(MONITORED_ACCOUNTS):
-            logger.debug("[twitter] Checking @%s (%d/%d)...", account, i + 1, len(MONITORED_ACCOUNTS))
+        for i, account in enumerate(self._all_monitored):
+            logger.debug("[twitter] Checking @%s (%d/%d)...", account, i + 1, len(self._all_monitored))
 
             status = await self._check_account_status(account)
             account_details[account] = status
@@ -1043,7 +956,7 @@ class TwitterCollector(BaseCollector):
 
             # For search results, always apply the dual-keyword filter
             # (the search query already targeted ICE+MN, but verify)
-            if not _tweet_is_relevant(text, screen_name):
+            if not self._tweet_is_relevant(text, screen_name):
                 continue
 
             ts = _parse_twitter_date(tweet["created_at"])
@@ -1094,7 +1007,7 @@ class TwitterCollector(BaseCollector):
             self._accounts_validated = True
             if not self._active_accounts:
                 logger.warning("[twitter] No active accounts found, using all accounts")
-                self._active_accounts = list(MONITORED_ACCOUNTS)
+                self._active_accounts = list(self._all_monitored)
 
         # ── Phase 1: Authenticated search (primary) ──────────────
         if self._has_credentials:
@@ -1102,11 +1015,11 @@ class TwitterCollector(BaseCollector):
             if logged_in:
                 # Pick search queries for this cycle
                 n_queries = self._search_queries_per_cycle
-                start_q = (cycle_idx * n_queries) % len(SEARCH_QUERIES)
+                start_q = (cycle_idx * n_queries) % len(self._search_queries)
                 queries_this_cycle = []
                 for i in range(n_queries):
-                    idx = (start_q + i) % len(SEARCH_QUERIES)
-                    queries_this_cycle.append(SEARCH_QUERIES[idx])
+                    idx = (start_q + i) % len(self._search_queries)
+                    queries_this_cycle.append(self._search_queries[idx])
 
                 logger.info(
                     "[twitter] Cycle %d: running %d search queries",
@@ -1128,7 +1041,7 @@ class TwitterCollector(BaseCollector):
 
         # ── Phase 2: Profile scraping (supplementary) ────────────
         # Use only validated active accounts
-        accounts_to_scrape = self._active_accounts if self._active_accounts else list(MONITORED_ACCOUNTS)
+        accounts_to_scrape = self._active_accounts if self._active_accounts else list(self._all_monitored)
 
         start = (cycle_idx * self._accounts_per_cycle) % len(accounts_to_scrape)
         accounts_this_cycle = []

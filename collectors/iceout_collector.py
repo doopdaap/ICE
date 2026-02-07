@@ -52,26 +52,7 @@ STATUS_LABELS = {
     1: "Confirmed",
 }
 
-# Greater Minneapolis metro - ~30 mile radius from downtown
-# Center: Downtown Minneapolis (44.9778, -93.2650)
-MPLS_CENTER_LAT = 44.9778
-MPLS_CENTER_LON = -93.2650
-MAX_DISTANCE_KM = 50.0  # ~31 miles
 
-# Text-based fallback filter for location_description
-# Only include actual Minneapolis metro cities (NOT Waite Park, Rochester, etc.)
-MN_LOCATION_KEYWORDS = {
-    "minneapolis", "mpls", "st paul", "saint paul",
-    "eden prairie", "bloomington", "brooklyn park", "brooklyn center",
-    "richfield", "golden valley", "st louis park", "crystal",
-    "new hope", "robbinsdale", "columbia heights", "fridley",
-    "plymouth", "maple grove", "eagan", "burnsville",
-    "shakopee", "prior lake", "savage", "lakeville",
-    "apple valley", "roseville", "maplewood", "woodbury",
-    "coon rapids", "anoka", "champlin", "dayton",
-    "minnetonka", "edina", "hopkins", "chanhassen",
-    "hennepin county", "ramsey county",
-}
 
 
 def _haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
@@ -89,35 +70,7 @@ def _haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
 
 
-def _is_mpls_area(report: dict) -> bool:
-    """Check if an Iceout report is in the Greater Minneapolis metro area (~30mi radius)."""
-    loc_str = report.get("location")
-    if loc_str:
-        try:
-            if isinstance(loc_str, str):
-                loc = json.loads(loc_str)
-            else:
-                loc = loc_str
-            coords = loc.get("coordinates", [])
-            if len(coords) >= 2:
-                lon, lat = coords[0], coords[1]
-                dist = _haversine_km(lat, lon, MPLS_CENTER_LAT, MPLS_CENTER_LON)
-                if dist <= MAX_DISTANCE_KM:
-                    return True
-                else:
-                    # Log rejected reports for debugging
-                    desc = report.get("location_description", "unknown")
-                    logger.debug(
-                        "[iceout] Rejecting report %.1f km from Minneapolis: %s",
-                        dist, desc[:50]
-                    )
-                    return False
-        except (json.JSONDecodeError, TypeError, ValueError):
-            pass
 
-    # Fallback: check location description text
-    desc = (report.get("location_description") or "").lower()
-    return any(kw in desc for kw in MN_LOCATION_KEYWORDS)
 
 
 def _extract_coords(report: dict) -> tuple[float | None, float | None]:
@@ -165,6 +118,41 @@ class IceoutCollector(BaseCollector):
         self._intercepted_data: list[bytes] = []
         self._polls_since_full_auth = 0  # Track polls since last full navigation
         self._polls_since_browser_restart = 0  # Track for memory management
+        # Locale-aware geo filter
+        locale = self.config.locale
+        self._center_lat = locale.center_lat
+        self._center_lon = locale.center_lon
+        self._radius_km = locale.radius_km
+        self._location_keywords = {kw.lower() for kw in locale.geo_city_names}
+
+    def _is_locale_area(self, report: dict) -> bool:
+        """Check if an Iceout report is within the configured locale radius."""
+        loc_str = report.get("location")
+        if loc_str:
+            try:
+                if isinstance(loc_str, str):
+                    loc = json.loads(loc_str)
+                else:
+                    loc = loc_str
+                coords = loc.get("coordinates", [])
+                if len(coords) >= 2:
+                    lon, lat = coords[0], coords[1]
+                    dist = _haversine_km(lat, lon, self._center_lat, self._center_lon)
+                    if dist <= self._radius_km:
+                        return True
+                    else:
+                        desc = report.get("location_description", "unknown")
+                        logger.debug(
+                            "[iceout] Rejecting report %.1f km from locale center: %s",
+                            dist, desc[:50]
+                        )
+                        return False
+            except (json.JSONDecodeError, TypeError, ValueError):
+                pass
+
+        # Fallback: check location description text
+        desc = (report.get("location_description") or "").lower()
+        return any(kw in desc for kw in self._location_keywords)
 
     def _kill_orphan_browsers(self) -> None:
         """Kill any orphaned Chromium processes to prevent memory leaks."""
@@ -485,8 +473,8 @@ class IceoutCollector(BaseCollector):
         skipped_stale = 0
 
         for item in data:
-            # Filter to Minneapolis metro area
-            if not _is_mpls_area(item):
+            # Filter to locale area
+            if not self._is_locale_area(item):
                 continue
 
             mpls_count += 1
@@ -568,7 +556,7 @@ class IceoutCollector(BaseCollector):
 
         if reports:
             logger.info(
-                "[iceout] Found %d NEW Minneapolis-area reports (of %d total, %d in area, %d already seen)",
+                "[iceout] Found %d NEW locale-area reports (of %d total, %d in area, %d already seen)",
                 len(reports),
                 len(data),
                 mpls_count,
@@ -576,7 +564,7 @@ class IceoutCollector(BaseCollector):
             )
         else:
             logger.info(
-                "[iceout] No new reports (%d total, %d in Minneapolis area, %d already seen)",
+                "[iceout] No new reports (%d total, %d in locale area, %d already seen)",
                 len(data),
                 mpls_count,
                 skipped_seen,

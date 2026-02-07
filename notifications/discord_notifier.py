@@ -47,20 +47,12 @@ def _get_color(incident: CorroboratedIncident) -> str:
     return COLOR_NEW_LOW
 
 
-def _format_time_cst(dt: datetime) -> str:
-    """Format a UTC datetime as Central time string."""
-    # CST is UTC-6, CDT is UTC-5. Use -6 as approximation.
-    from datetime import timedelta
-    cst = dt - timedelta(hours=6)
-    return cst.strftime("%-I:%M %p").replace("AM", "am").replace("PM", "pm")
-
-
-def _format_time_cst_win(dt: datetime) -> str:
-    """Format a UTC datetime as Central time string (Windows-safe)."""
-    from datetime import timedelta
-    cst = dt - timedelta(hours=6)
-    # Windows doesn't support %-I, use %I and strip leading zero
-    raw = cst.strftime("%I:%M %p")
+def _format_time_local(dt: datetime, tz_name: str) -> str:
+    """Format a UTC datetime in the locale's timezone."""
+    from zoneinfo import ZoneInfo
+    local_dt = dt.astimezone(ZoneInfo(tz_name))
+    # %-I is Linux-only; use %I and strip leading zero for portability
+    raw = local_dt.strftime("%I:%M %p")
     if raw.startswith("0"):
         raw = raw[1:]
     return raw.lower()
@@ -82,6 +74,7 @@ class DiscordNotifier:
         self.dry_run = config.dry_run
         self._use_webhook = bool(self.webhook_url)
         self._use_bot = bool(self.bot_token)
+        self._locale = config.locale
 
     def _build_new_incident_embed(
         self, incident: CorroboratedIncident
@@ -91,16 +84,16 @@ class DiscordNotifier:
         conf = _confidence_emoji(incident.confidence_score)
 
         # Title: location front and center
-        location = incident.primary_location or "Minneapolis area"
+        location = incident.primary_location or self._locale.fallback_location
         embed = DiscordEmbed(
             title=f"ICE ACTIVITY: {location}",
             color=color,
         )
 
         # Topline summary — the most important info in 1-2 lines
-        time_str = _format_time_cst_win(incident.earliest_report)
+        time_str = _format_time_local(incident.earliest_report, self._locale.timezone)
         if incident.earliest_report != incident.latest_report:
-            time_str += f" - {_format_time_cst_win(incident.latest_report)}"
+            time_str += f" - {_format_time_local(incident.latest_report, self._locale.timezone)}"
 
         platform_names = sorted(
             SOURCE_LABELS.get(s, s) for s in incident.unique_source_types
@@ -147,7 +140,7 @@ class DiscordNotifier:
     ) -> DiscordEmbed:
         """Build embed for an UPDATE to an existing incident."""
         color = COLOR_UPDATE
-        location = incident.primary_location or "Minneapolis area"
+        location = incident.primary_location or self._locale.fallback_location
 
         embed = DiscordEmbed(
             title=f"UPDATE: {location}",

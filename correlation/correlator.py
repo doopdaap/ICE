@@ -144,7 +144,7 @@ class Correlator:
             primary_location = (
                 max(set(neighborhoods), key=neighborhoods.count)
                 if neighborhoods
-                else cluster_info.get("primary_location", "Minneapolis area")
+                else cluster_info.get("primary_location", self.config.locale.fallback_location)
             )
 
             lats = [r.latitude for r in all_cluster_reports if r.latitude is not None]
@@ -268,7 +268,7 @@ class Correlator:
             confidence = 0.65  # Trusted but single source
 
             # Location from the report
-            primary_location = report.primary_neighborhood or "Minneapolis area"
+            primary_location = report.primary_neighborhood or self.config.locale.fallback_location
 
             # Create cluster for this single report
             report_ids = [report.id] if report.id is not None else []
@@ -403,9 +403,9 @@ class Correlator:
         if a.primary_neighborhood and b.primary_neighborhood:
             if a.primary_neighborhood == b.primary_neighborhood:
                 return 1.0
-            return 0.5  # different neighborhoods but both in Minneapolis
+            return 0.5  # different neighborhoods but both in locale area
 
-        # At least one has some Minneapolis reference (they passed keyword filter)
+        # At least one has some locale reference (they passed keyword filter)
         return 0.3
 
     def _cluster(
@@ -460,7 +460,7 @@ class Correlator:
         if neighborhoods:
             primary_location = max(set(neighborhoods), key=neighborhoods.count)
         else:
-            primary_location = "Minneapolis (unspecified)"
+            primary_location = self.config.locale.fallback_location_unspecified
 
         # Average coordinates from reports that have them
         lats = [r.latitude for r in reports if r.latitude is not None]

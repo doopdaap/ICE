@@ -3,6 +3,10 @@ from __future__ import annotations
 import html
 import re
 import logging
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from processing.locale import Locale
 
 logger = logging.getLogger(__name__)
 
@@ -59,121 +63,20 @@ _ICE_EXACT_RE = re.compile(
     re.IGNORECASE,
 )
 
-GEO_KEYWORDS: set[str] = {
-    "minneapolis",
-    "mpls",
-    "hennepin",
-    "hennepin county",
-    "twin cities",
-    "st paul",
-    "saint paul",
-    "ramsey county",
-    "minnesota",
-    # Major neighborhoods
-    "uptown",
-    "downtown minneapolis",
-    "north minneapolis",
-    "south minneapolis",
-    "northeast minneapolis",
-    "cedar-riverside",
-    "cedar riverside",
-    "west bank",
-    "phillips",
-    "powderhorn",
-    "whittier",
-    "seward",
-    "longfellow",
-    "nokomis",
-    "loring park",
-    "elliot park",
-    "stevens square",
-    "ventura village",
-    "midtown",
-    "corcoran",
-    "standish",
-    "ericsson",
-    "kingfield",
-    "lyndale",
-    "tangletown",
-    "diamond lake",
-    "hale",
-    "page",
-    "field",
-    "regina",
-    "northrup",
-    "kenny",
-    "windom",
-    "armatage",
-    "lynnhurst",
-    "fulton",
-    "linden hills",
-    "east harriet",
-    "west calhoun",
-    "east isles",
-    "lowry hill",
-    "lowry hill east",
-    "kenwood",
-    "bryn mawr",
-    "harrison",
-    "hawthorne",
-    "near north",
-    "willard-hay",
-    "jordan",
-    "folwell",
-    "mckinley",
-    "humboldt industrial",
-    "sumner-glenwood",
-    "prospect park",
-    "como",
-    "marcy-holmes",
-    "nicollet island",
-    "st anthony west",
-    "st anthony east",
-    "waite park",
-    "audubon park",
-    "holland",
-    "logan park",
-    "marshall terrace",
-    "bottineau",
-    "sheridan",
-    "columbia park",
-    "windom park",
-    # Metro suburbs commonly involved in ICE enforcement
-    "bloomington",
-    "richfield",
-    "brooklyn park",
-    "brooklyn center",
-    "columbia heights",
-    "fridley",
-    "crystal",
-    "golden valley",
-    "robbinsdale",
-    "st louis park",
-    "eden prairie",
-    "burnsville",
-    "eagan",
-    "shakopee",
-    "albertville",
-    # Major streets and landmarks
-    "lake street",
-    "nicollet avenue",
-    "hennepin avenue",
-    "franklin avenue",
-    "central avenue",
-    "university avenue",
-    "washington avenue",
-    "lyndale avenue",
-    "bloomington avenue",
-    "chicago avenue",
-    "portland avenue",
-    "cedar avenue",
-    "hiawatha avenue",
-    "minnehaha",
-    "us bank stadium",
-    "mall of america",
-    "msp airport",
-}
+# ── Geographic keywords ───────────────────────────────────────────────
+# Loaded at startup from the active locale via init_geo_keywords().
+# Falls back to a small default set if init hasn't been called.
+GEO_KEYWORDS: set[str] = set()
 
+
+def init_geo_keywords(locale: Locale) -> None:
+    """Populate GEO_KEYWORDS from the active locale.
+
+    Called once at startup from main.py after loading the config/locale.
+    """
+    global GEO_KEYWORDS
+    GEO_KEYWORDS = set(locale.geo_keywords)
+    logger.info("text_processor: loaded %d geo keywords from locale '%s'", len(GEO_KEYWORDS), locale.name)
 # ── Noise rejection ──────────────────────────────────────────────────
 # Terms that cause false positives when "ice" is matched.
 # If text contains these WITHOUT a stronger ICE phrase, it's likely noise.

@@ -2,6 +2,8 @@ import os
 from dataclasses import dataclass, field
 from dotenv import load_dotenv
 
+from processing.locale import Locale, load_locale
+
 
 load_dotenv()
 
@@ -21,6 +23,9 @@ def _get_float(key: str, default: float) -> float:
 
 @dataclass(frozen=True)
 class Config:
+    # Locale — all location-specific data lives here
+    locale: Locale = field(default_factory=lambda: load_locale())
+
     # Discord - supports both webhook (single channel) and bot (multi-server) modes
     discord_webhook_url: str = ""      # For webhook mode (original)
     discord_bot_token: str = ""        # For bot mode (publishable)
@@ -37,17 +42,11 @@ class Config:
     reddit_client_id: str = ""
     reddit_client_secret: str = ""
     reddit_user_agent: str = "ice-monitor:v0.1"
-    reddit_subreddits: tuple[str, ...] = (
-        "Minneapolis", "minnesota", "TwinCities", "immigration",
-    )
+    reddit_subreddits: tuple[str, ...] = ()  # loaded from locale
     reddit_poll_interval: int = 60
 
     # RSS
-    rss_feeds: tuple[str, ...] = (
-        "https://www.startribune.com/local/index.rss2",
-        "https://www.mprnews.org/feed/minnesota",
-        "https://www.kare11.com/feeds/syndication/rss/news",
-    )
+    rss_feeds: tuple[str, ...] = ()  # loaded from locale
     rss_poll_interval: int = 300
 
     # Iceout.org
@@ -66,11 +65,10 @@ class Config:
     instagram_enabled: bool = True
     instagram_poll_interval: int = 300  # 5 minutes (strict rate limits)
 
-    # Geographic filtering - Greater Minneapolis area
-    # Center point: Downtown Minneapolis (44.9778, -93.2650)
-    mpls_center_lat: float = 44.9778
-    mpls_center_lon: float = -93.2650
-    max_distance_km: float = 50.0  # ~30 miles radius
+    # Geographic filtering — read from locale, can be overridden via env
+    mpls_center_lat: float = 0.0
+    mpls_center_lon: float = 0.0
+    max_distance_km: float = 50.0
 
     # Report freshness — discard reports older than this
     report_max_age_seconds: int = 10800  # 3 hours
@@ -94,21 +92,24 @@ class Config:
 
 
 def load_config() -> Config:
+    locale = load_locale()  # uses LOCALE env var, defaults to "minneapolis"
+
     reddit_subs_raw = os.getenv("REDDIT_SUBREDDITS", "")
     reddit_subs = (
         tuple(s.strip() for s in reddit_subs_raw.split(",") if s.strip())
         if reddit_subs_raw
-        else Config.reddit_subreddits
+        else locale.subreddits
     )
 
     rss_feeds_raw = os.getenv("RSS_FEEDS", "")
     rss_feeds = (
         tuple(s.strip() for s in rss_feeds_raw.split(",") if s.strip())
         if rss_feeds_raw
-        else Config.rss_feeds
+        else locale.rss_feeds
     )
 
     return Config(
+        locale=locale,
         discord_webhook_url=os.getenv("DISCORD_WEBHOOK_URL", ""),
         discord_bot_token=os.getenv("DISCORD_BOT_TOKEN", ""),
         discord_bot_client_id=os.getenv("DISCORD_BOT_CLIENT_ID", ""),
@@ -131,6 +132,9 @@ def load_config() -> Config:
         stopice_poll_interval=_get_int("STOPICE_POLL_INTERVAL", 1800),
         instagram_enabled=_get_bool("INSTAGRAM_ENABLED", True),
         instagram_poll_interval=_get_int("INSTAGRAM_POLL_INTERVAL", 300),
+        mpls_center_lat=_get_float("CENTER_LAT", locale.center_lat),
+        mpls_center_lon=_get_float("CENTER_LON", locale.center_lon),
+        max_distance_km=_get_float("MAX_DISTANCE_KM", locale.radius_km),
         report_max_age_seconds=_get_int("REPORT_MAX_AGE_SECONDS", 10800),
         correlation_window_seconds=_get_int("CORRELATION_WINDOW_SECONDS", 10800),
         min_corroboration_sources=_get_int("MIN_CORROBORATION_SOURCES", 2),

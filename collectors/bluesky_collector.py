@@ -25,39 +25,7 @@ logger = logging.getLogger(__name__)
 # ── Bluesky API endpoints ─────────────────────────────────────────────
 BSKY_PUBLIC_API = "https://public.api.bsky.app"
 
-# ── Search queries ────────────────────────────────────────────────────
-SEARCH_QUERIES = [
-    "ICE Minneapolis",
-    "ICE Minnesota",
-    "immigration raid Minneapolis",
-    "deportation Minnesota",
-    "ICE agents Minneapolis",
-    "immigration enforcement Minneapolis",
-]
-
-# ── Accounts to monitor ───────────────────────────────────────────────
-# Bluesky handles (without @)
-# These were found by searching for stale Twitter accounts on Bluesky
-MONITORED_ACCOUNTS = [
-    # ── News orgs ──
-    "startribune.bsky.social",       # Star Tribune - active, major MN newspaper
-    "bringmethenews.bsky.social",    # Bring Me The News - 6242 posts, very active!
-    "sahanjournal.bsky.social",      # Sahan Journal - 908 posts, immigrant community news
-    # Note: mprnews.org exists but has 0 posts
-
-    # ── Journalists ──
-    "maxnesterak.bsky.social",       # Max Nesterak - 723 posts, MN Reformer journalist
-    # Note: mwilliamsonmn.bsky.social and nickvalencia.bsky.social exist but have 0 posts
-
-    # ── Community orgs & activists ──
-    "miracmn.bsky.social",           # MIRAC - 37 posts, MN Immigrant Rights Action Committee
-    "conmijente.bsky.social",        # Mijente - 21 posts, Latinx organizing collective
-    "defend612.bsky.social",         # Defend 612 - 5 posts, Minneapolis rapid-response network
-    "sunrisemvmt.bsky.social",       # Sunrise Movement - 367 posts, climate/social justice
-    # Note: unitedwedream.org exists but has 0 posts
-]
-
-# ── Relevance filtering ───────────────────────────────────────────────
+# ── ICE keyword regex (universal — not locale-specific) ──────────────
 import re
 
 ICE_KEYWORDS_RE = re.compile(
@@ -78,44 +46,6 @@ ICE_KEYWORDS_RE = re.compile(
     re.IGNORECASE,
 )
 
-MN_KEYWORDS_RE = re.compile(
-    r"\b(?:"
-    r"minneapolis|mpls|minnesota|hennepin|"
-    r"st\.?\s*paul|saint\s+paul|twin\s+cities|"
-    r"bloomington|eden\s+prairie|brooklyn\s+(?:park|center)|"
-    r"lake\s+street|cedar[\s-]riverside|uptown|"
-    r"whittier|powderhorn|phillips|seward|longfellow"
-    r")",
-    re.IGNORECASE,
-)
-
-# MN-focused accounts don't need geo keyword (only need ICE keyword)
-MN_FOCUSED_ACCOUNTS = {
-    # News
-    "startribune.bsky.social",
-    "bringmethenews.bsky.social",
-    "sahanjournal.bsky.social",
-    # Journalists
-    "maxnesterak.bsky.social",
-    # MN community orgs
-    "miracmn.bsky.social",
-    "defend612.bsky.social",
-}
-
-
-def _post_is_relevant(text: str, author_handle: str) -> bool:
-    """Check if a post is about ICE enforcement in Minnesota."""
-    handle_lower = author_handle.lower()
-
-    has_ice = bool(ICE_KEYWORDS_RE.search(text))
-    has_mn = bool(MN_KEYWORDS_RE.search(text))
-
-    # MN-focused accounts only need ICE keyword
-    if handle_lower in MN_FOCUSED_ACCOUNTS:
-        return has_ice
-
-    return has_ice and has_mn
-
 
 class BlueskyCollector(BaseCollector):
     """Collects posts from Bluesky about ICE activity via public API."""
@@ -126,6 +56,24 @@ class BlueskyCollector(BaseCollector):
         super().__init__(*args, **kwargs)
         self._session: aiohttp.ClientSession | None = None
         self._search_index = 0
+        # Build locale-aware geo regex and account sets
+        locale = self.config.locale
+        self._geo_re = locale.build_geo_regex()
+        self._search_queries = list(locale.bluesky_search_queries)
+        self._monitored_accounts = list(locale.bluesky_monitored_accounts)
+        self._focused_accounts = {h.lower() for h in locale.bluesky_trusted_accounts}
+
+    def _post_is_relevant(self, text: str, author_handle: str) -> bool:
+        """Check if a post is about ICE enforcement in the locale area."""
+        handle_lower = author_handle.lower()
+        has_ice = bool(ICE_KEYWORDS_RE.search(text))
+        has_geo = bool(self._geo_re.search(text))
+
+        # Locale-focused accounts only need ICE keyword
+        if handle_lower in self._focused_accounts:
+            return has_ice
+
+        return has_ice and has_geo
 
     async def _ensure_session(self) -> aiohttp.ClientSession:
         """Get or create an aiohttp session."""
@@ -236,7 +184,7 @@ class BlueskyCollector(BaseCollector):
                 ts = now
 
             # Check relevance
-            if not _post_is_relevant(text, handle):
+            if not self._post_is_relevant(text, handle):
                 return None
 
             # Build source ID and URL
@@ -286,8 +234,8 @@ class BlueskyCollector(BaseCollector):
         reports: list[RawReport] = []
 
         # Rotate through search queries (1 per cycle to avoid rate limits)
-        if SEARCH_QUERIES:
-            query = SEARCH_QUERIES[self._search_index % len(SEARCH_QUERIES)]
+        if self._search_queries:
+            query = self._search_queries[self._search_index % len(self._search_queries)]
             self._search_index += 1
 
             logger.debug("[bluesky] Searching: %s", query)
@@ -301,11 +249,11 @@ class BlueskyCollector(BaseCollector):
             await asyncio.sleep(1)  # Rate limit courtesy
 
         # Check monitored accounts (rotate through them)
-        if MONITORED_ACCOUNTS:
+        if self._monitored_accounts:
             # Check 2 accounts per cycle
             for i in range(2):
-                idx = (self._search_index + i) % len(MONITORED_ACCOUNTS)
-                handle = MONITORED_ACCOUNTS[idx]
+                idx = (self._search_index + i) % len(self._monitored_accounts)
+                handle = self._monitored_accounts[idx]
 
                 logger.debug("[bluesky] Checking @%s", handle)
                 posts = await self._get_author_feed(handle)

@@ -18,6 +18,7 @@ scikit-learn>=1.4.0
 
 # Configuration
 python-dotenv>=1.0.0
+PyYAML>=6.0.0
 
 # Iceout.org API (MessagePack format + headless browser for auth)
 msgpack>=1.0.0

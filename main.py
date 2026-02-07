@@ -135,7 +135,11 @@ class ICEMonitor:
         if self._location_extractor is None:
             try:
                 from processing.location_extractor import LocationExtractor
-                self._location_extractor = LocationExtractor()
+                locale = self.config.locale
+                self._location_extractor = LocationExtractor(
+                    neighborhoods_file=locale.neighborhoods_file,
+                    landmarks_file=locale.landmarks_file,
+                )
                 logger.info("Location extractor loaded (spaCy + gazetteer)")
             except OSError as e:
                 logger.warning(
@@ -213,7 +217,7 @@ class ICEMonitor:
                     else:
                         # Use the raw location description from the source
                         neighborhood = report.raw_metadata.get(
-                            "location_description", "Minneapolis area"
+                            "location_description", self.config.locale.fallback_location
                         )
             else:
                 neighborhood = report.raw_metadata.get("location_description")
@@ -324,6 +328,11 @@ class ICEMonitor:
 
     async def run(self) -> None:
         """Start all components and run until shutdown."""
+        # Initialize locale-dependent geo keywords
+        from processing.text_processor import init_geo_keywords
+        init_geo_keywords(self.config.locale)
+        logger.info("Geo keywords loaded for locale: %s", self.config.locale.name)
+
         # Initialize
         await self.db.connect()
         self._init_collectors()
@@ -359,7 +368,12 @@ class ICEMonitor:
         if self.config.discord_bot_token:
             try:
                 from notifications.discord_bot import ICEAlertBot, _set_bot_instance
-                self._bot = ICEAlertBot(self.config.discord_bot_token)
+                locale = self.config.locale
+                self._bot = ICEAlertBot(
+                    self.config.discord_bot_token,
+                    locale_name=locale.display_name,
+                    locale_area=locale.fallback_location,
+                )
                 _set_bot_instance(self._bot)
                 logger.info("Discord bot initialized, starting in background...")
             except ImportError as e:
@@ -427,7 +441,7 @@ class ICEMonitor:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Minneapolis ICE Activity Monitor"
+        description="ICE Activity Monitor"
     )
     parser.add_argument(
         "--dry-run",

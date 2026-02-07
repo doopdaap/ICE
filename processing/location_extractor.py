@@ -38,17 +38,27 @@ def haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
 
 
 class LocationExtractor:
-    def __init__(self):
+    def __init__(
+        self,
+        neighborhoods_file: str | None = None,
+        landmarks_file: str | None = None,
+    ):
         self.nlp = spacy.load("en_core_web_sm")
         self._gazetteer: list[dict] = []
         self._landmarks: list[dict] = []
         self._name_to_entry: dict[str, dict] = {}
         self._matcher = PhraseMatcher(self.nlp.vocab, attr="LOWER")
+        self._neighborhoods_file = neighborhoods_file or os.path.join(
+            GEODATA_DIR, "minneapolis_neighborhoods.json"
+        )
+        self._landmarks_file = landmarks_file or os.path.join(
+            GEODATA_DIR, "landmarks.json"
+        )
         self._load_data()
 
     def _load_data(self) -> None:
-        neighborhoods_path = os.path.join(GEODATA_DIR, "minneapolis_neighborhoods.json")
-        landmarks_path = os.path.join(GEODATA_DIR, "landmarks.json")
+        neighborhoods_path = self._neighborhoods_file
+        landmarks_path = self._landmarks_file
 
         with open(neighborhoods_path, "r") as f:
             self._gazetteer = json.load(f)
@@ -73,7 +83,7 @@ class LocationExtractor:
             patterns.append(self.nlp.make_doc(name))
 
         if patterns:
-            self._matcher.add("MPLS_LOCATIONS", patterns)
+            self._matcher.add("LOCALE_LOCATIONS", patterns)
 
         logger.info(
             "Loaded %d neighborhoods, %d landmarks",

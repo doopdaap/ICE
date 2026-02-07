@@ -48,14 +48,17 @@ SUBSCRIPTIONS_FILE = Path("discord_subscriptions.json")
 class ICEAlertBot(commands.Bot):
     """Discord bot for distributing ICE activity alerts."""
 
-    def __init__(self, token: str):
+    def __init__(self, token: str, *, locale_name: str = "Minneapolis", locale_area: str = "Minneapolis area"):
         intents = discord.Intents.default()
         intents.message_content = True
+
+        self._locale_name = locale_name
+        self._locale_area = locale_area
 
         super().__init__(
             command_prefix="!ice ",
             intents=intents,
-            description="Minneapolis ICE Activity Monitor",
+            description=f"{locale_name} ICE Activity Monitor",
         )
 
         self.token = token
@@ -272,7 +275,7 @@ class ICEAlertBot(commands.Bot):
 
         # Footer
         embed.set_footer(
-            text="Minneapolis ICE Monitor | Stay safe, know your rights"
+            text=f"{self._locale_name} ICE Monitor | Stay safe, know your rights"
         )
 
         return embed
@@ -318,7 +321,7 @@ class ICECommands(commands.Cog):
             filter_msg = f" (filtered to: {location})" if location else ""
             await interaction.response.send_message(
                 f"✅ This channel is now subscribed to ICE activity alerts{filter_msg}.\n\n"
-                f"You will receive notifications when ICE activity is reported in the Minneapolis area.\n"
+                f"You will receive notifications when ICE activity is reported in the {self.bot._locale_area}.\n"
                 f"Use `/ice unsubscribe` to stop receiving alerts.",
                 ephemeral=False,
             )
@@ -390,10 +393,10 @@ class ICECommands(commands.Cog):
     async def help(self, interaction: discord.Interaction):
         """Show help message."""
         embed = discord.Embed(
-            title="🚨 Minneapolis ICE Activity Monitor",
+            title=f"🚨 {self.bot._locale_name} ICE Activity Monitor",
             description=(
                 "This bot monitors multiple sources for ICE enforcement activity "
-                "in the Minneapolis/Twin Cities area and sends alerts to subscribed channels."
+                f"in the {self.bot._locale_area} and sends alerts to subscribed channels."
             ),
             color=discord.Color.blue(),
         )
@@ -462,11 +465,11 @@ def _set_bot_instance(bot: ICEAlertBot) -> None:
     logger.info("Bot instance registered for alert broadcasting")
 
 
-async def init_bot(token: str) -> ICEAlertBot:
+async def init_bot(token: str, *, locale_name: str = "Minneapolis", locale_area: str = "Minneapolis area") -> ICEAlertBot:
     """Initialize and return the bot instance."""
     global _bot_instance
     if _bot_instance is None:
-        _bot_instance = ICEAlertBot(token)
+        _bot_instance = ICEAlertBot(token, locale_name=locale_name, locale_area=locale_area)
     return _bot_instance
 
 
