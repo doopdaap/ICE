@@ -105,7 +105,13 @@ class Locale:
 # ---------------------------------------------------------------------------
 
 def _resolve_path(relative: str) -> str:
-    """Turn a project-relative path into an absolute path."""
+    """Turn a project-relative path into an absolute path.
+
+    Returns an empty string when *relative* is empty so that downstream
+    code (e.g. ``LocationExtractor``) can fall back to its own defaults.
+    """
+    if not relative:
+        return ""
     return str(_PROJECT_ROOT / relative)
 
 
